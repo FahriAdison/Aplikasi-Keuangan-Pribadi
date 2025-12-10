@@ -92,11 +92,10 @@
 <script type="module">
     // Mengimpor modul Firebase yang diperlukan dari CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 1. HARDCODED FIREBASE CONFIGURATION (Wajib untuk GitHub Pages) ---
-    // Konfigurasi ini diambil dari detail proyek Firebase Anda ('keuangan-vercel').
+    // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyBWGcB71XutjePkzHM6NUMhuIeoUhk4S8I",
         authDomain: "keuangan-vercel.firebaseapp.com",
@@ -107,12 +106,9 @@
         measurementId: "G-YH4KXP51KL"
     };
 
-    // --- 2. ENVIRONMENT VARIABLES (Untuk Kompatibilitas Canvas/Jalur Data) ---
-    // Menggunakan 'default-app-id' karena aplikasi ini berdiri sendiri
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    // Menggunakan token otentikasi kustom jika tersedia
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+    // Variabel aplikasi
+    const appId = 'keuangan-app';
+    
     let app;
     let db;
     let auth;
@@ -145,8 +141,8 @@
     };
 
     const getCollectionPath = (uid) => {
-        // Menggunakan jalur data PRIVATE yang aman dan sesuai dengan Aturan Keamanan.
-        return `artifacts/${appId}/users/${uid}/transactions`;
+        // Path yang lebih sederhana
+        return `users/${uid}/transactions`;
     };
 
     const handleTransactionTypeChange = (newType) => {
@@ -168,33 +164,30 @@
     // --- Firebase Initialization and Auth ---
     async function initializeFirebase() {
         // Cek apakah konfigurasi API Key ada
-        if (!firebaseConfig.apiKey) {
-            authStatusEl.textContent = "Error: Konfigurasi Firebase Hilang/Gagal Diinisialisasi!";
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+            authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Lengkap!";
             authStatusEl.classList.remove('text-indigo-800');
             authStatusEl.classList.add('text-red-800');
             return;
         }
 
         try {
-            setLogLevel('debug'); // Untuk debugging di konsol
+            // Inisialisasi Firebase
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
 
-            // 1. Tanda tangani pengguna menggunakan token kustom atau anonim
-            // Ini akan membuat UID unik untuk pengguna (Anda)
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
+            // Status inisialisasi
+            authStatusEl.textContent = "Menginisialisasi Firebase...";
+            
+            // Login anonim
+            await signInAnonymously(auth);
 
-            // 2. Dengarkan perubahan status otentikasi
+            // Dengarkan perubahan status otentikasi
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
                     authStatusEl.textContent = "Database AKTIF & AMAN.";
-                    // UID ditampilkan di sini
                     userIdDisplayEl.textContent = `ID Pengguna (UID): ${userId}`;
                     authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
                     authStatusEl.classList.add('text-green-800');
@@ -203,22 +196,28 @@
                     listenForTransactions();
                 } else {
                     userId = null;
-                    authStatusEl.textContent = "Error: Otentikasi Gagal. Tidak ada pengguna yang masuk.";
-                    userIdDisplayEl.textContent = 'Silakan periksa Aturan Keamanan Firebase Anda.';
+                    authStatusEl.textContent = "Error: Otentikasi Gagal.";
+                    userIdDisplayEl.textContent = 'Tidak ada pengguna yang masuk.';
                     authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
                     authStatusEl.classList.add('text-red-800');
                 }
+            }, (error) => {
+                console.error("Error auth state change:", error);
+                authStatusEl.textContent = `Error Otentikasi: ${error.message}`;
+                authStatusEl.classList.add('text-red-800');
             });
 
         } catch (error) {
-            console.error("Gagal menginisialisasi Firebase atau Otentikasi:", error);
-            // Penanganan khusus untuk error konfigurasi
+            console.error("Gagal menginisialisasi Firebase:", error);
+            
             if (error.code === 'auth/configuration-not-found') {
-                authStatusEl.textContent = "Error Otentikasi: auth/configuration-not-found. Periksa Kunci API/Konfigurasi Firebase.";
+                authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Ditemukan. Periksa kunci API.";
+            } else if (error.code === 'auth/invalid-api-key') {
+                authStatusEl.textContent = "Error: API Key Firebase Tidak Valid.";
             } else {
-                authStatusEl.textContent = `Error Otentikasi: ${error.code}. Periksa Konsol & Konfigurasi Firebase.`;
+                authStatusEl.textContent = `Error: ${error.code} - ${error.message}`;
             }
-            userIdDisplayEl.textContent = 'Status: Koneksi Gagal';
+            
             authStatusEl.classList.remove('text-indigo-800');
             authStatusEl.classList.add('text-red-800');
         }
@@ -226,47 +225,55 @@
 
     // --- Firestore Data Listener ---
     function listenForTransactions() {
-        if (!db || !userId) return; 
+        if (!db || !userId) {
+            console.error("DB atau userId tidak tersedia");
+            return;
+        } 
 
-        // Collection Path: artifacts/default-app-id/users/{UID_ANDA}/transactions
-        const transactionsRef = collection(db, getCollectionPath(userId));
-        const q = query(transactionsRef);
+        try {
+            const transactionsRef = collection(db, getCollectionPath(userId));
+            const q = query(transactionsRef);
 
-        // onSnapshot menyediakan pembaruan real-time
-        onSnapshot(q, (snapshot) => {
-            const transactions = [];
-            let totalIncome = 0;
-            let totalExpense = 0;
+            // onSnapshot menyediakan pembaruan real-time
+            onSnapshot(q, (snapshot) => {
+                const transactions = [];
+                let totalIncome = 0;
+                let totalExpense = 0;
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                transactions.push({ id: doc.id, ...data });
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    transactions.push({ id: doc.id, ...data });
 
-                const amount = parseInt(data.amount);
-                if (data.type === 'pemasukan') {
-                    totalIncome += amount;
-                } else if (data.type === 'pengeluaran') {
-                    totalExpense += amount;
+                    const amount = Number(data.amount) || 0;
+                    if (data.type === 'pemasukan') {
+                        totalIncome += amount;
+                    } else if (data.type === 'pengeluaran') {
+                        totalExpense += amount;
+                    }
+                });
+
+                // Sortir transaksi berdasarkan tanggal (terbaru dulu)
+                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Perbarui UI
+                updateDashboard(totalIncome, totalExpense);
+                renderTransactions(transactions);
+
+            }, (error) => {
+                console.error("Gagal mendengarkan transaksi:", error);
+                if (error.code === "permission-denied") {
+                    authStatusEl.textContent = "Error: Akses Ditolak. Periksa Aturan Keamanan Firestore!";
+                    authStatusEl.classList.add('text-red-800');
+                } else {
+                    authStatusEl.textContent = `Error Data: ${error.message}`;
+                    authStatusEl.classList.add('text-red-800');
                 }
             });
-
-            // Sortir transaksi berdasarkan tanggal (terbaru dulu)
-            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            // Perbarui UI
-            updateDashboard(totalIncome, totalExpense);
-            renderTransactions(transactions);
-
-        }, (error) => {
-            console.error("Gagal mendengarkan transaksi:", error);
-            if (error.code === "permission-denied") {
-                authStatusEl.textContent = "Error Data: Akses Ditolak. Cek Aturan Keamanan Firestore!";
-                authStatusEl.classList.remove('text-green-800');
-                authStatusEl.classList.add('text-red-800');
-            } else {
-                 authStatusEl.textContent = `Error Data: ${error.code}.`;
-            }
-        });
+        } catch (error) {
+            console.error("Error in listenForTransactions:", error);
+            authStatusEl.textContent = "Error: Gagal mengakses database.";
+            authStatusEl.classList.add('text-red-800');
+        }
     }
 
     // --- UI Update Functions ---
@@ -300,13 +307,13 @@
             const isIncome = t.type === 'pemasukan';
             const color = isIncome ? 'border-green-400' : 'border-red-400';
             const sign = isIncome ? '+' : '-';
-            const amountValue = parseInt(t.amount); // Pastikan ini integer
+            const amountValue = Number(t.amount) || 0;
 
             const item = document.createElement('div');
             item.className = `p-3 border-l-4 ${color} bg-gray-50 rounded-lg shadow-sm flex justify-between items-center transition duration-150 hover:bg-gray-100`;
             item.innerHTML = `
                 <div>
-                    <p class="font-semibold text-gray-800">${t.description}</p>
+                    <p class="font-semibold text-gray-800">${t.description || 'Tanpa keterangan'}</p>
                     <p class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                 </div>
                 <div class="text-right">
@@ -332,6 +339,7 @@
 
         if (!userId) {
             console.error('Aplikasi belum terotentikasi. Tidak dapat menyimpan data.');
+            alert('Silakan tunggu hingga aplikasi terhubung dengan database.');
             return;
         }
 
@@ -340,12 +348,15 @@
         const date = document.getElementById('date').value; 
         const type = transactionTypeInput.value;
 
-        if (!amount || !description || !date) return;
+        if (!amount || !description || !date) {
+            alert('Harap lengkapi semua data!');
+            return;
+        }
 
         try {
             const transactionsRef = collection(db, getCollectionPath(userId));
             await addDoc(transactionsRef, {
-                amount: amount,
+                amount: Number(amount),
                 description: description,
                 date: date,
                 type: type,
@@ -359,14 +370,13 @@
             
         } catch (error) {
             console.error("Gagal menambahkan transaksi:", error);
-            // Anda dapat menambahkan pesan error UI di sini
+            alert(`Gagal menyimpan transaksi: ${error.message}`);
         }
     });
 
     async function handleDeleteTransaction(e) {
         const transactionId = e.target.dataset.id;
         
-        // Ganti alert/confirm dengan window.confirm di lingkungan ini
         if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
             return;
         }
@@ -376,9 +386,9 @@
             await deleteDoc(transactionDocRef);
         } catch (error) {
             console.error("Gagal menghapus transaksi:", error);
+            alert(`Gagal menghapus transaksi: ${error.message}`);
         }
     }
-
 
     // --- Start Application ---
     // Atur tipe transaksi awal
@@ -388,4 +398,3 @@
 </script>
 </body>
 </html>
-
