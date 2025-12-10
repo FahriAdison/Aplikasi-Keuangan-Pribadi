@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Catatan Keuangan Pribadi</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Konfigurasi Font -->
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .balance-positive { color: #10B981; }
@@ -17,22 +15,23 @@
 
 <div id="app" class="min-h-screen p-4 md:p-8">
     <div class="max-w-xl mx-auto">
-        
         <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Catatan Keuangan Pribadi</h1>
 
         <!-- Status & Notifikasi -->
         <div id="status-card" class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl shadow-md mb-6">
             <p id="auth-status" class="font-bold text-center text-md">Memuat status otentikasi...</p>
-            <p id="user-id-display" class="text-xs text-center mt-2 break-all"></p> 
+            <p id="user-id-display" class="text-xs text-center mt-2 break-all"></p>
             <p class="text-xs text-center mt-1 text-gray-500">Gunakan ID di atas untuk melihat data di Firebase Console.</p>
+            <div class="mt-3 text-center">
+                <button id="use-local-btn" class="py-1 px-3 text-sm bg-yellow-400 rounded-md shadow-sm hover:brightness-95">Gunakan Mode Lokal (jika Firebase error)</button>
+            </div>
         </div>
 
         <!-- Dashboard Saldo -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
             <p class="text-sm font-medium text-gray-500 mb-2">Saldo Saat Ini</p>
-            <!-- Warna awal disetel default, akan diubah oleh JS -->
-            <div id="current-balance" class="text-4xl font-bold text-blue-700">Rp 0</div> 
-            
+            <div id="current-balance" class="text-4xl font-bold text-blue-700">Rp 0</div>
+
             <div class="flex justify-between mt-4 space-x-4">
                 <div class="flex-1 p-3 bg-green-50 rounded-lg text-center">
                     <p class="text-xs font-medium text-gray-600">Masuk</p>
@@ -49,16 +48,15 @@
         <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
             <h2 class="text-xl font-semibold mb-4">Tambah Transaksi Baru</h2>
             <form id="transaction-form" class="space-y-4">
-                
                 <div class="flex space-x-2">
-                    <button type="button" id="type-pemasukan" class="flex-1 p-3 rounded-lg font-bold bg-green-500 text-white shadow-md transition duration-150 active:scale-95">Pemasukan (+)</button>
-                    <button type="button" id="type-pengeluaran" class="flex-1 p-3 rounded-lg font-bold bg-gray-200 text-gray-700 shadow-md transition duration-150 active:scale-95">Pengeluaran (-)</button>
+                    <button type="button" id="type-pemasukan" class="flex-1 p-3 rounded-lg font-bold bg-green-500 text-white shadow-md">Pemasukan (+)</button>
+                    <button type="button" id="type-pengeluaran" class="flex-1 p-3 rounded-lg font-bold bg-gray-200 text-gray-700 shadow-md">Pengeluaran (-)</button>
                     <input type="hidden" id="transaction-type" value="pemasukan">
                 </div>
 
                 <div>
                     <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
-                    <input type="number" id="amount" placeholder="Contoh: 50000" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
+                    <input type="number" id="amount" placeholder="Contoh: 50000" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required min="0">
                 </div>
 
                 <div>
@@ -71,7 +69,7 @@
                     <input type="date" id="date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
                 </div>
 
-                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-150 active:scale-95">Catat Transaksi</button>
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700">Catat Transaksi</button>
             </form>
         </div>
 
@@ -79,23 +77,21 @@
         <div class="bg-white p-6 rounded-xl shadow-lg">
             <h2 class="text-xl font-semibold mb-4">Riwayat Transaksi</h2>
             <div id="transactions-list" class="space-y-3">
-                <!-- Data transaksi akan dimuat di sini -->
-                <p id="loading-message" class="text-center text-gray-500">Memuat data dari Cloud Firestore...</p>
+                <p id="loading-message" class="text-center text-gray-500">Memuat data...</p>
             </div>
             <p id="no-data-message" class="text-center text-gray-500 hidden mt-4">Belum ada transaksi. Silakan tambahkan satu!</p>
         </div>
-        
+
     </div>
 </div>
 
-<!-- Firebase SDK Imports (Module) -->
 <script type="module">
-    // Mengimpor modul Firebase yang diperlukan dari CDN
+    // Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, onSnapshot, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 1. FIREBASE CONFIGURATION ---
+    // --- Konfigurasi Firebase (dari user) ---
     const firebaseConfig = {
         apiKey: "AIzaSyBWGcB71XutjePkzHM6NUMhuIeoUhk4S8I",
         authDomain: "keuangan-vercel.firebaseapp.com",
@@ -106,15 +102,18 @@
         measurementId: "G-YH4KXP51KL"
     };
 
-    // Variabel aplikasi
-    const appId = 'keuangan-app';
-    
-    let app;
-    let db;
-    let auth;
+    // Environment / optional
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    // State
+    let app = null;
+    let db = null;
+    let auth = null;
     let userId = null;
-    
-    // Elemen UI
+    let useLocal = false; // fallback ke localStorage jika Firebase gagal
+
+    // UI elements
     const authStatusEl = document.getElementById('auth-status');
     const userIdDisplayEl = document.getElementById('user-id-display');
     const loadingMessageEl = document.getElementById('loading-message');
@@ -127,33 +126,31 @@
     const typePemasukanBtn = document.getElementById('type-pemasukan');
     const typePengeluaranBtn = document.getElementById('type-pengeluaran');
     const transactionTypeInput = document.getElementById('transaction-type');
-    
-    // Set tanggal hari ini secara default
+    const useLocalBtn = document.getElementById('use-local-btn');
+
+    // Default date = today
     document.getElementById('date').valueAsDate = new Date();
-    
-    // --- Helper Functions ---
+
+    // Helper: format Rupiah
     const formatRupiah = (number) => {
-        // Menggunakan Math.abs untuk memastikan format rupiah tidak memiliki tanda minus
-        const absoluteNumber = Math.abs(number);
-        // Memformat angka dengan pemisah ribuan Indonesia
-        const formatted = absoluteNumber.toLocaleString('id-ID'); 
+        const absoluteNumber = Math.abs(Number(number) || 0);
+        const formatted = absoluteNumber.toLocaleString('id-ID');
         return 'Rp ' + formatted;
     };
 
     const getCollectionPath = (uid) => {
-        // Path yang lebih sederhana
-        return `users/${uid}/transactions`;
+        return `artifacts/${appId}/users/${uid}/transactions`;
     };
 
+    // UI: transaction type change
     const handleTransactionTypeChange = (newType) => {
         transactionTypeInput.value = newType;
-        // Logic untuk mengubah warna tombol berdasarkan tipe yang dipilih
         if (newType === 'pemasukan') {
             typePemasukanBtn.classList.remove('bg-gray-200', 'text-gray-700');
             typePemasukanBtn.classList.add('bg-green-500', 'text-white');
             typePengeluaranBtn.classList.remove('bg-red-500', 'text-white');
             typePengeluaranBtn.classList.add('bg-gray-200', 'text-gray-700');
-        } else { // pengeluaran
+        } else {
             typePengeluaranBtn.classList.remove('bg-gray-200', 'text-gray-700');
             typePengeluaranBtn.classList.add('bg-red-500', 'text-white');
             typePemasukanBtn.classList.remove('bg-green-500', 'text-white');
@@ -161,29 +158,28 @@
         }
     };
 
-    // --- Firebase Initialization and Auth ---
+    // FIREBASE INITIALIZATION with graceful fallback
     async function initializeFirebase() {
-        // Cek apakah konfigurasi API Key ada
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-            authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Lengkap!";
-            authStatusEl.classList.remove('text-indigo-800');
-            authStatusEl.classList.add('text-red-800');
+        // Validasi minimal
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+            showAuthError("Error: Konfigurasi Firebase tidak lengkap. Beralih ke Mode Lokal.");
+            activateLocalMode();
             return;
         }
 
         try {
-            // Inisialisasi Firebase
+            // Init app
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
 
-            // Status inisialisasi
-            authStatusEl.textContent = "Menginisialisasi Firebase...";
-            
-            // Login anonim
-            await signInAnonymously(auth);
+            // try sign-in anonymous or custom token
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
 
-            // Dengarkan perubahan status otentikasi
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
@@ -191,208 +187,271 @@
                     userIdDisplayEl.textContent = `ID Pengguna (UID): ${userId}`;
                     authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
                     authStatusEl.classList.add('text-green-800');
-                    
-                    // Setelah otentikasi berhasil, mulai mendengarkan data Firestore
+
+                    // start listening
                     listenForTransactions();
                 } else {
-                    userId = null;
-                    authStatusEl.textContent = "Error: Otentikasi Gagal.";
-                    userIdDisplayEl.textContent = 'Tidak ada pengguna yang masuk.';
-                    authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
-                    authStatusEl.classList.add('text-red-800');
+                    showAuthError("Error: Otentikasi gagal — tidak ada pengguna yang masuk.");
+                    // fallback
+                    activateLocalMode();
                 }
-            }, (error) => {
-                console.error("Error auth state change:", error);
-                authStatusEl.textContent = `Error Otentikasi: ${error.message}`;
-                authStatusEl.classList.add('text-red-800');
             });
-
-        } catch (error) {
-            console.error("Gagal menginisialisasi Firebase:", error);
-            
-            if (error.code === 'auth/configuration-not-found') {
-                authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Ditemukan. Periksa kunci API.";
-            } else if (error.code === 'auth/invalid-api-key') {
-                authStatusEl.textContent = "Error: API Key Firebase Tidak Valid.";
+        } catch (err) {
+            // Jika terjadi error khusus auth/configuration-not-found atau lainnya -> fallback ke local
+            console.error("Inisialisasi Firebase gagal:", err);
+            if (err && err.code === 'auth/configuration-not-found') {
+                showAuthError("Error Otentikasi: auth/configuration-not-found. Periksa Kunci API/Konfigurasi Firebase. Aplikasi akan beralih ke Mode Lokal.");
             } else {
-                authStatusEl.textContent = `Error: ${error.code} - ${error.message}`;
+                showAuthError(`Error Otentikasi: ${err.code || err.message || 'unknown'}. Beralih ke Mode Lokal.`);
             }
-            
-            authStatusEl.classList.remove('text-indigo-800');
-            authStatusEl.classList.add('text-red-800');
+            activateLocalMode();
         }
     }
 
-    // --- Firestore Data Listener ---
+    // Show auth error text in status card
+    function showAuthError(message) {
+        authStatusEl.textContent = message;
+        authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
+        authStatusEl.classList.add('text-red-800');
+        userIdDisplayEl.textContent = 'Status: Koneksi Firebase Gagal / Tidak Tersedia';
+    }
+
+    // LISTENER: choose firestore or local based on useLocal
     function listenForTransactions() {
-        if (!db || !userId) {
-            console.error("DB atau userId tidak tersedia");
+        if (useLocal) {
+            // load from localStorage
+            loadFromLocal();
             return;
-        } 
-
-        try {
-            const transactionsRef = collection(db, getCollectionPath(userId));
-            const q = query(transactionsRef);
-
-            // onSnapshot menyediakan pembaruan real-time
-            onSnapshot(q, (snapshot) => {
-                const transactions = [];
-                let totalIncome = 0;
-                let totalExpense = 0;
-
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    transactions.push({ id: doc.id, ...data });
-
-                    const amount = Number(data.amount) || 0;
-                    if (data.type === 'pemasukan') {
-                        totalIncome += amount;
-                    } else if (data.type === 'pengeluaran') {
-                        totalExpense += amount;
-                    }
-                });
-
-                // Sortir transaksi berdasarkan tanggal (terbaru dulu)
-                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                // Perbarui UI
-                updateDashboard(totalIncome, totalExpense);
-                renderTransactions(transactions);
-
-            }, (error) => {
-                console.error("Gagal mendengarkan transaksi:", error);
-                if (error.code === "permission-denied") {
-                    authStatusEl.textContent = "Error: Akses Ditolak. Periksa Aturan Keamanan Firestore!";
-                    authStatusEl.classList.add('text-red-800');
-                } else {
-                    authStatusEl.textContent = `Error Data: ${error.message}`;
-                    authStatusEl.classList.add('text-red-800');
-                }
-            });
-        } catch (error) {
-            console.error("Error in listenForTransactions:", error);
-            authStatusEl.textContent = "Error: Gagal mengakses database.";
-            authStatusEl.classList.add('text-red-800');
         }
+
+        if (!db || !userId) {
+            // if userId not ready, fallback to local
+            activateLocalMode();
+            return;
+        }
+
+        loadingMessageEl.classList.remove('hidden');
+        const transactionsRef = collection(db, getCollectionPath(userId));
+        const q = query(transactionsRef);
+
+        // realtime listener
+        onSnapshot(q, (snapshot) => {
+            const transactions = [];
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            snapshot.forEach((d) => {
+                const data = d.data();
+                transactions.push({ id: d.id, ...data });
+                const amt = parseInt(data.amount) || 0;
+                if (data.type === 'pemasukan') totalIncome += amt;
+                else if (data.type === 'pengeluaran') totalExpense += amt;
+            });
+
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            updateDashboard(totalIncome, totalExpense);
+            renderTransactions(transactions);
+        }, (error) => {
+            console.error("Gagal mendengarkan transaksi firestore:", error);
+            if (error && error.code === 'permission-denied') {
+                showAuthError("Error Data: Akses Ditolak. Cek Aturan Keamanan Firestore! Beralih ke Mode Lokal.");
+            } else {
+                showAuthError(`Gagal memuat data: ${error?.code || error?.message || 'unknown'}. Beralih ke Mode Lokal.`);
+            }
+            activateLocalMode();
+        });
     }
 
-    // --- UI Update Functions ---
+    // Update dashboard
     function updateDashboard(income, expense) {
-        const balance = income - expense;
+        const balance = (Number(income) || 0) - (Number(expense) || 0);
         totalIncomeEl.textContent = formatRupiah(income);
         totalExpenseEl.textContent = formatRupiah(expense);
         currentBalanceEl.textContent = formatRupiah(balance);
 
-        // Perbarui warna saldo
         currentBalanceEl.classList.remove('text-blue-700', 'text-red-700');
-        if (balance >= 0) {
-            currentBalanceEl.classList.add('text-blue-700');
-        } else {
-            currentBalanceEl.classList.add('text-red-700');
-        }
+        if (balance >= 0) currentBalanceEl.classList.add('text-blue-700');
+        else currentBalanceEl.classList.add('text-red-700');
     }
 
+    // Render transactions list
     function renderTransactions(transactions) {
         transactionsListEl.innerHTML = '';
         loadingMessageEl.classList.add('hidden');
 
-        if (transactions.length === 0) {
+        if (!transactions || transactions.length === 0) {
             noDataMessageEl.classList.remove('hidden');
             return;
         }
-
         noDataMessageEl.classList.add('hidden');
 
         transactions.forEach(t => {
             const isIncome = t.type === 'pemasukan';
             const color = isIncome ? 'border-green-400' : 'border-red-400';
             const sign = isIncome ? '+' : '-';
-            const amountValue = Number(t.amount) || 0;
+            const amountValue = parseInt(t.amount) || 0;
 
             const item = document.createElement('div');
-            item.className = `p-3 border-l-4 ${color} bg-gray-50 rounded-lg shadow-sm flex justify-between items-center transition duration-150 hover:bg-gray-100`;
+            item.className = `p-3 border-l-4 ${color} bg-gray-50 rounded-lg shadow-sm flex justify-between items-center`;
             item.innerHTML = `
                 <div>
-                    <p class="font-semibold text-gray-800">${t.description || 'Tanpa keterangan'}</p>
+                    <p class="font-semibold text-gray-800">${t.description}</p>
                     <p class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                 </div>
                 <div class="text-right">
                     <p class="font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}">${sign} ${formatRupiah(amountValue)}</p>
-                    <button data-id="${t.id}" class="delete-btn text-xs text-red-500 hover:text-red-700 mt-1">Hapus</button>
+                    <button data-id="${t.id || t._localId}" class="delete-btn text-xs text-red-500 hover:text-red-700 mt-1">Hapus</button>
                 </div>
             `;
             transactionsListEl.appendChild(item);
         });
 
-        // Attach delete listeners
+        // attach delete handlers
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', handleDeleteTransaction);
         });
     }
 
-    // --- Event Handlers ---
+    // EVENT HANDLERS
     typePemasukanBtn.addEventListener('click', () => handleTransactionTypeChange('pemasukan'));
     typePengeluaranBtn.addEventListener('click', () => handleTransactionTypeChange('pengeluaran'));
 
     transactionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        if (!userId) {
-            console.error('Aplikasi belum terotentikasi. Tidak dapat menyimpan data.');
-            alert('Silakan tunggu hingga aplikasi terhubung dengan database.');
-            return;
-        }
-
         const amount = document.getElementById('amount').value;
         const description = document.getElementById('description').value;
-        const date = document.getElementById('date').value; 
+        const date = document.getElementById('date').value;
         const type = transactionTypeInput.value;
 
-        if (!amount || !description || !date) {
-            alert('Harap lengkapi semua data!');
-            return;
+        if (!amount || !description || !date) return;
+
+        const payload = {
+            amount: String(amount),
+            description: description,
+            date: date,
+            type: type,
+            createdAt: new Date().toISOString()
+        };
+
+        if (useLocal) {
+            saveToLocal(payload);
+        } else {
+            // Firestore path
+            if (!db || !userId) {
+                // fallback
+                saveToLocal(payload);
+            } else {
+                try {
+                    const transactionsRef = collection(db, getCollectionPath(userId));
+                    await addDoc(transactionsRef, payload);
+                } catch (err) {
+                    console.error("Gagal menambahkan ke Firestore:", err);
+                    // fallback to local
+                    saveToLocal(payload);
+                }
+            }
         }
 
-        try {
-            const transactionsRef = collection(db, getCollectionPath(userId));
-            await addDoc(transactionsRef, {
-                amount: Number(amount),
-                description: description,
-                date: date,
-                type: type,
-                createdAt: new Date().toISOString()
-            });
-
-            // Reset form setelah berhasil
-            transactionForm.reset();
-            document.getElementById('date').valueAsDate = new Date(); // Reset tanggal
-            handleTransactionTypeChange('pemasukan'); // Reset tipe
-            
-        } catch (error) {
-            console.error("Gagal menambahkan transaksi:", error);
-            alert(`Gagal menyimpan transaksi: ${error.message}`);
-        }
+        // reset form
+        transactionForm.reset();
+        document.getElementById('date').valueAsDate = new Date();
+        handleTransactionTypeChange('pemasukan');
     });
 
+    // Delete transaction handler (works for firestore and local)
     async function handleDeleteTransaction(e) {
-        const transactionId = e.target.dataset.id;
-        
-        if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-            return;
-        }
-        
-        try {
-            const transactionDocRef = doc(db, getCollectionPath(userId), transactionId);
-            await deleteDoc(transactionDocRef);
-        } catch (error) {
-            console.error("Gagal menghapus transaksi:", error);
-            alert(`Gagal menghapus transaksi: ${error.message}`);
+        const id = e.target.dataset.id;
+        if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) return;
+
+        if (useLocal || (id && id.startsWith('_local_'))) {
+            // local delete
+            deleteFromLocal(id);
+        } else {
+            // firestore delete
+            try {
+                const transactionDocRef = doc(db, getCollectionPath(userId), id);
+                await deleteDoc(transactionDocRef);
+            } catch (err) {
+                console.error("Gagal menghapus dari Firestore:", err);
+                alert('Gagal menghapus dari server. Jika offline, gunakan Mode Lokal.');
+            }
         }
     }
 
-    // --- Start Application ---
-    // Atur tipe transaksi awal
+    // ----------------------------
+    // LocalStorage fallback logic
+    // ----------------------------
+    const LOCAL_KEY = `keuangan_local_${appId}`;
+
+    function activateLocalMode() {
+        useLocal = true;
+        authStatusEl.textContent = "Mode Lokal Aktif — menyimpan data di browser (localStorage).";
+        authStatusEl.classList.remove('text-red-800', 'text-green-800');
+        authStatusEl.classList.add('text-indigo-800');
+        userIdDisplayEl.textContent = 'ID Pengguna: (Local Mode)';
+        listenForTransactions(); // will load local
+    }
+
+    function loadFromLocal() {
+        loadingMessageEl.classList.remove('hidden');
+        const raw = localStorage.getItem(LOCAL_KEY) || '[]';
+        try {
+            const arr = JSON.parse(raw);
+            // compute totals
+            let income = 0, expense = 0;
+            arr.forEach(item => {
+                const amt = parseInt(item.amount) || 0;
+                if (item.type === 'pemasukan') income += amt;
+                else if (item.type === 'pengeluaran') expense += amt;
+            });
+            // sort desc by date
+            arr.sort((a,b) => new Date(b.date) - new Date(a.date));
+            // provide temporary ids for local items
+            const mapped = arr.map((it, idx) => ({ ...it, _localId: it._localId || (`_local_${idx}_${btoa(it.createdAt||'')}`) }));
+            // save with ids back
+            localStorage.setItem(LOCAL_KEY, JSON.stringify(mapped));
+            updateDashboard(income, expense);
+            renderTransactions(mapped);
+        } catch (err) {
+            console.error("Gagal load local:", err);
+            transactionsListEl.innerHTML = '<p class="text-center text-red-500">Data lokal rusak. Reset data lokal diperlukan.</p>';
+        } finally {
+            loadingMessageEl.classList.add('hidden');
+        }
+    }
+
+    function saveToLocal(payload) {
+        const raw = localStorage.getItem(LOCAL_KEY) || '[]';
+        const arr = JSON.parse(raw);
+        const newItem = { ...payload, _localId: `_local_${Date.now()}` };
+        arr.push(newItem);
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
+        loadFromLocal(); // refresh UI
+    }
+
+    function deleteFromLocal(localId) {
+        const raw = localStorage.getItem(LOCAL_KEY) || '[]';
+        const arr = JSON.parse(raw);
+        const filtered = arr.filter(it => (it._localId || '').toString() !== localId.toString());
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(filtered));
+        loadFromLocal();
+    }
+
+    // Manual toggle to local mode button
+    useLocalBtn.addEventListener('click', (e) => {
+        if (!useLocal) {
+            if (!confirm('Aktifkan Mode Lokal? Data akan disimpan di browser (localStorage).')) return;
+            activateLocalMode();
+        } else {
+            alert('Mode Lokal sudah aktif.');
+        }
+    });
+
+    // Initial UI setup
     handleTransactionTypeChange(transactionTypeInput.value);
+
+    // Start application
     initializeFirebase();
 
 </script>
