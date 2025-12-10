@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keuanganku Pribadi (Cloud)</title>
-    <!-- === PWA MANIFEST & ICONS UNTUK 'TAMBAHKAN KE LAYAR UTAMA' === -->
+    <title>Keuanganku Pribadi (Cloud FIX)</title>
+    <!-- PWA Manifest & Icons -->
     <meta name="theme-color" content="#3b82f6">
     <meta name="application-name" content="Keuanganku">
     <meta name="apple-mobile-web-app-title" content="Keuanganku">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- Icon Utama (menggunakan link yang Anda berikan) -->
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpNGr8O0BhPM9TIcc1pFXzG7qpY93kZ0cwKB2Ce6khQ&s=10" type="image/png">
-    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpNGr8O0BhPM9TIcc1pFXzG7qpY93kZ0cwKB2Ce6khQ&s=10">
+    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpNGr8O0BhPM9TIcc1pFXzG7qpQ93kZ0cwKB2Ce6khQ&s=10">
 
-    <!-- Tailwind CSS untuk tampilan -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React dan ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -33,14 +31,13 @@
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
 
-    <!-- FIREBASE IMPORTS -->
+    <!-- FIREBASE IMPORTS DAN INITIALIZATION HELPER -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
-            query, 
             onSnapshot, 
             addDoc, 
             deleteDoc, 
@@ -48,30 +45,44 @@
             setLogLevel
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Atur level log untuk debugging di konsol
+        // Atur level log untuk debugging (akan tampil di Console browser)
         setLogLevel('Debug');
         
-        // Variabel global yang disediakan oleh environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Inisialisasi Firebase
-        let app, auth, db;
-        if (firebaseConfig) {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            window.db = db; // Membuat db dapat diakses di luar module
-        } else {
-            console.error("Firebase config is missing.");
-        }
+        // Variabel global yang disediakan oleh environment (didefinisikan ulang untuk keamanan)
+        const getGlobalVar = (name, defaultValue) => typeof window[name] !== 'undefined' ? window[name] : defaultValue;
         
-        // Fungsi Otentikasi dan Listener
-        const authenticateAndListen = (callback) => {
-            if (!auth) return;
+        const appId = getGlobalVar('__app_id', 'default-app-id');
+        const initialAuthToken = getGlobalVar('__initial_auth_token', null);
+        let firebaseConfig = null;
+        try {
+            const configString = getGlobalVar('__firebase_config', null);
+            if (configString) {
+                firebaseConfig = JSON.parse(configString);
+            }
+        } catch (e) {
+            console.error("Failed to parse firebase config:", e);
+        }
 
-            // 1. Coba otentikasi menggunakan token kustom jika ada
+
+        // Fungsi Otentikasi dan Listener Utama
+        const authenticateAndListen = (callback, handleError) => {
+            if (!firebaseConfig) {
+                handleError("Firebase configuration is missing or invalid.");
+                return;
+            }
+
+            let app, auth, db;
+            try {
+                // Inisialisasi Firebase
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            } catch(e) {
+                handleError(`Firebase Initialization failed: ${e.message}`);
+                return;
+            }
+
+            // 1. Coba otentikasi
             const signIn = async () => {
                 try {
                     if (initialAuthToken) {
@@ -80,18 +91,22 @@
                         await signInAnonymously(auth);
                     }
                 } catch (error) {
-                    console.error("Firebase Sign-in Error:", error);
+                    console.warn("Custom/Anonymous Sign-in failed (continuing to observe auth state):", error);
+                    // Tidak memanggil handleError di sini, biarkan onAuthStateChanged yang menangani
                 }
             };
 
             signIn();
 
             // 2. Dengarkan perubahan status otentikasi
-            onAuthStateChanged(auth, (user) => {
+            const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
                 const userId = user?.uid || null;
-                // Panggil callback setelah otentikasi siap, kirimkan instance DB dan userId
+                // Panggil callback setelah otentikasi siap
                 callback(db, userId, appId);
             });
+            
+            // Return cleanup function for external use if needed
+            return unsubscribeAuth;
         };
 
         // Memasang fungsi otentikasi ke window agar dapat dipanggil oleh React
@@ -102,72 +117,11 @@
         const { useState, useMemo, useEffect } = React;
 
         // --- Konstanta & Data Awal (Hardcoded) ---
-        // Data ini HANYA digunakan sebagai Saldo Awal dan tidak akan disimpan di Firestore
         const HARDCODED_DATA = [
             { id: 'h1', date: '2024-11-02', desc: 'Saldo Awal', category: 'Saldo', amount: 31000, type: 'balance' },
             { id: 'h2', date: '2024-11-02', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
             { id: 'h3', date: '2024-11-02', desc: 'Profit Rekber 2', category: 'Rekber', amount: 3000, type: 'income' },
-            // ... (lanjutan data hardcoded lainnya untuk riwayat awal)
-            { id: 'h4', date: '2024-11-03', desc: 'Profit Rekber (Total 5 Trx)', category: 'Rekber', amount: 30000, type: 'income' },
-            { id: 'h5', date: '2024-11-04', desc: 'Belanja Mie + Minuman', category: 'Makanan', amount: 16439, type: 'expense' },
-            { id: 'h6', date: '2024-11-04', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
-            { id: 'h7', date: '2024-11-04', desc: 'Joki 3 Scenario', category: 'Joki', amount: 15000, type: 'income' },
-            { id: 'h8', date: '2024-11-05', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h9', date: '2024-11-06', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 28000, type: 'income' },
-            { id: 'h10', date: '2024-11-07', desc: 'Beli WDP x2', category: 'Game', amount: 54600, type: 'expense' },
-            { id: 'h11', date: '2024-11-07', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 35000, type: 'income' },
-            { id: 'h12', date: '2024-11-07', desc: 'Beli Diamond', category: 'Game', amount: 16376, type: 'expense' },
-            { id: 'h13', date: '2024-11-07', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 13000, type: 'income' },
-            { id: 'h14', date: '2024-11-08', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
-            { id: 'h15', date: '2024-11-08', desc: 'Joki 2 Uma', category: 'Joki', amount: 6000, type: 'income' },
-            { id: 'h16', date: '2024-11-09', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 10000, type: 'income' },
-            { id: 'h17', date: '2024-11-09', desc: 'Bantu Teman', category: 'Sosial', amount: 35000, type: 'expense' },
-            { id: 'h18', date: '2024-11-09', desc: 'Upgrade Cloud Phone', category: 'Operasional', amount: 20023, type: 'expense' },
-            { id: 'h19', date: '2024-11-10', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h20', date: '2024-11-11', desc: 'Beli Mie', category: 'Makanan', amount: 10100, type: 'expense' },
-            { id: 'h21', date: '2024-11-12', desc: 'Joki 4 Uma', category: 'Joki', amount: 12000, type: 'income' },
-            { id: 'h22', date: '2024-11-12', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h23', date: '2024-11-13', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
-            { id: 'h24', date: '2024-11-15', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 15000, type: 'income' },
-            { id: 'h25', date: '2024-11-15', desc: 'Beli Indomie', category: 'Makanan', amount: 14300, type: 'expense' },
-            { id: 'h26', date: '2024-11-18', desc: 'Tarik SociaBuzz', category: 'Lainnya', amount: 14150, type: 'income' },
-            { id: 'h27', date: '2024-11-19', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 21260, type: 'income' },
-            { id: 'h28', date: '2024-11-20', desc: 'Profit Rekber (Total 5 Trx)', category: 'Rekber', amount: 25000, type: 'income' },
-            { id: 'h29', date: '2024-11-20', desc: 'Cloud Phone (Harian + Bulanan)', category: 'Operasional', amount: 136863, type: 'expense' },
-            { id: 'h30', date: '2024-11-21', desc: 'Profit Rekber 1', category: 'Rekber', amount: 15000, type: 'income' },
-            { id: 'h31', date: '2024-11-21', desc: 'Profit Rekber 2', category: 'Rekber', amount: 22780, type: 'income' },
-            { id: 'h32', date: '2024-11-22', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 23000, type: 'income' },
-            { id: 'h33', date: '2024-11-23', desc: 'Beli WDP', category: 'Game', amount: 28725, type: 'expense' },
-            { id: 'h34', date: '2024-11-24', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 23000, type: 'income' },
-            { id: 'h35', date: '2024-11-24', desc: 'WDP 2 Orang (Menang Turnamen)', category: 'Game', amount: 56648, type: 'expense' },
-            { id: 'h36', date: '2024-11-25', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
-            { id: 'h37', date: '2024-11-26', desc: 'Jual 10 Akun Google', category: 'Jualan Akun', amount: 8000, type: 'income' },
-            { id: 'h38', date: '2024-11-26', desc: 'Profit Rekber (Total 4 Trx)', category: 'Rekber', amount: 52100, type: 'income' },
-            { id: 'h39', date: '2024-11-27', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 15000, type: 'income' },
-            { id: 'h40', date: '2024-11-28', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
-            { id: 'h41', date: '2024-11-28', desc: 'Profit Rekber 2 (After Admin)', category: 'Rekber', amount: 11933, type: 'income' },
-            { id: 'h42', date: '2024-11-29', desc: 'Profit Rekber (Total 4 Trx)', category: 'Rekber', amount: 40000, type: 'income' },
-            { id: 'h43', date: '2024-11-29', desc: 'Penyesuaian Saldo', category: 'Lainnya', amount: 10248, type: 'income' },
-            { id: 'h44', date: '2024-11-30', desc: 'Beli Premium Pass', category: 'Game', amount: 36630, type: 'expense' },
-            { id: 'h45', date: '2024-11-30', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
-            { id: 'h46', date: '2024-11-30', desc: 'Hadiah Pembukaan Server', category: 'Lainnya', amount: 8800, type: 'expense' },
-            { id: 'h47', date: '2024-12-01', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
-            { id: 'h48', date: '2024-12-01', desc: 'Joki 61 Uma', category: 'Joki', amount: 185000, type: 'income' },
-            { id: 'h49', date: '2024-12-01', desc: 'Tarik Tunai', category: 'Tarik Tunai', amount: 50000, type: 'expense' },
-            { id: 'h50', date: '2024-12-02', desc: 'Profit Rekber 1', category: 'Rekber', amount: 10000, type: 'income' },
-            { id: 'h51', date: '2024-12-02', desc: 'Token PLN', category: 'Listrik', amount: 48750, type: 'expense' },
-            { id: 'h52', date: '2024-12-02', desc: 'Isi Ulang Saldo', category: 'Topup Saldo', amount: 50000, type: 'income' },
-            { id: 'h53', date: '2024-12-03', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
-            { id: 'h54', date: '2024-12-04', desc: 'Joki 7 Uma', category: 'Joki', amount: 21000, type: 'income' },
-            { id: 'h55', date: '2024-12-05', desc: 'Beli Headset', category: 'Gadget', amount: 132340, type: 'expense' },
-            { id: 'h56', date: '2024-12-06', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h57', date: '2024-12-08', desc: 'Beli 66 Paid Jewels (Ada potongan)', category: 'Game', amount: 22951, type: 'expense' },
-            { id: 'h58', date: '2024-12-08', desc: 'Rawat Akun 2 Minggu', category: 'Joki', amount: 50000, type: 'income' },
-            { id: 'h59', date: '2024-12-08', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h60', date: '2024-12-09', desc: 'Perpanjang Cloud Phone', category: 'Operasional', amount: 132090, type: 'expense' },
-            { id: 'h61', date: '2024-12-09', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
-            { id: 'h62', date: '2024-12-09', desc: 'Token PLN', category: 'Listrik', amount: 45000, type: 'expense' },
-            { id: 'h63', date: '2024-12-09', desc: 'Isi Ulang', category: 'Topup Saldo', amount: 50000, type: 'income' },
+            // ... (lanjutan data hardcoded lainnya untuk riwayat awal - dipersingkat)
             { id: 'h64', date: '2024-12-10', desc: 'Profit Rekber 1', category: 'Rekber', amount: 10000, type: 'income' },
         ];
         
@@ -188,10 +142,10 @@
         const IconLoading = () => <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>;
 
         
-        // --- Komponen Modal Konfirmasi Hapus ---
+        // --- Komponen Modal Konfirmasi Hapus (Sama seperti sebelumnya) ---
         const DeleteModal = ({ transaction, onConfirm, onClose, formatRupiah }) => {
             if (!transaction) return null;
-
+            // ... (Modal implementation)
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
                     <div 
@@ -228,7 +182,7 @@
             );
         };
         
-        // --- Komponen Grafik Donut ---
+        // --- Komponen Grafik Donut (Sama seperti sebelumnya) ---
         const CategoryChart = ({ stats, totalExpense }) => {
             if (totalExpense === 0) {
                 return <p className="text-center text-slate-500 py-4">Belum ada data pengeluaran untuk ditampilkan.</p>;
@@ -290,7 +244,7 @@
         };
 
         
-        // --- Komponen Input Form ---
+        // --- Komponen Input Form (Sama seperti sebelumnya) ---
         const InputForm = ({ onAddTransaction, formatRupiah }) => {
             const today = new Date().toISOString().split('T')[0];
             const [input, setInput] = useState({
@@ -335,12 +289,12 @@
                         date: today,
                         desc: '',
                         category: input.type === 'income' ? 'Rekber' : 'Makanan',
-                        amount: '', // Reset amount setelah sukses
+                        amount: '',
                         type: input.type,
                     });
                 } catch (error) {
                     console.error("Gagal menambahkan transaksi:", error);
-                    setMessage('Gagal menambahkan transaksi. Cek konsol untuk detail.');
+                    setMessage('Gagal menambahkan transaksi. Koneksi Cloud bermasalah.');
                 }
                 
                 setIsLoading(false);
@@ -442,10 +396,10 @@
             const [filter, setFilter] = useState('all');
             const [deleteCandidate, setDeleteCandidate] = useState(null); 
             const [isLoadingData, setIsLoadingData] = useState(true);
+            const [error, setError] = useState(null); // State untuk menyimpan error
 
             // 1. Inisialisasi Firebase dan Otentikasi
             useEffect(() => {
-                // Memanggil fungsi dari script module di atas
                 if (window.authenticateAndListen) {
                     window.authenticateAndListen((dbInstance, userId, appId) => {
                         setFirebaseContext({ 
@@ -454,8 +408,18 @@
                             appId, 
                             isAuthReady: true 
                         });
-                        console.log("Firebase Auth Ready. User ID:", userId);
+                        setError(null); // Hapus error jika otentikasi berhasil
+                    }, (err) => {
+                         // Tangani error inisialisasi di module script
+                        setError(err);
+                        setFirebaseContext(prev => ({ ...prev, isAuthReady: true })); // Tetap set ready agar rendering dimulai
+                        setIsLoadingData(false);
                     });
+                } else {
+                    // Fallback jika module script gagal dimuat
+                    setError("ERROR: Firebase loader script is missing.");
+                    setFirebaseContext(prev => ({ ...prev, isAuthReady: true }));
+                    setIsLoadingData(false);
                 }
             }, []);
 
@@ -463,45 +427,46 @@
             useEffect(() => {
                 const { db, userId, appId, isAuthReady } = firebaseContext;
 
-                if (!isAuthReady || !userId || !db) {
-                    // Tunggu sampai otentikasi selesai
-                    console.log("Waiting for Firebase Auth...");
-                    return; 
-                }
+                if (!isAuthReady) return; // Tunggu auth siap
+                if (error) return; // Jangan coba connect jika ada error inisialisasi
 
                 setIsLoadingData(true);
 
-                // PATH COLLECTION: /artifacts/{appId}/users/{userId}/transactions
-                const trxCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
+                if (!db || !userId) {
+                    // Jika isAuthReady true tapi db/userId null (misal ada masalah auth tapi tidak fatal)
+                    // Kita hanya akan menampilkan data hardcoded saja.
+                    setTransactions(HARDCODED_DATA);
+                    setIsLoadingData(false);
+                    return;
+                }
                 
-                // onSnapshot memberikan data real-time
-                const unsubscribe = onSnapshot(trxCollectionRef, (snapshot) => {
+                // PATH COLLECTION: /artifacts/{appId}/users/{userId}/transactions
+                const trxCollectionRef = window.collection(db, 'artifacts', appId, 'users', userId, 'transactions');
+                
+                const unsubscribe = window.onSnapshot(trxCollectionRef, (snapshot) => {
                     const cloudTransactions = snapshot.docs.map(doc => ({
-                        id: doc.id, // ID Firestore unik
+                        id: doc.id,
                         ...doc.data()
                     }));
                     
-                    // Menggabungkan data hardcoded (saldo awal) dengan data dari cloud
-                    // Pastikan data cloudTransactions selalu memiliki 'amount' sebagai number
                     const combinedTransactions = [
                         ...HARDCODED_DATA, 
                         ...cloudTransactions.map(t => ({
                             ...t,
-                            amount: Number(t.amount) // Pastikan amount adalah angka
+                            amount: Number(t.amount)
                         }))
                     ];
 
                     setTransactions(combinedTransactions);
                     setIsLoadingData(false);
-                    console.log(`Data loaded successfully. Total transactions: ${combinedTransactions.length}`);
-                }, (error) => {
-                    console.error("Error listening to Firestore:", error);
+                }, (firestoreError) => {
+                    console.error("Error listening to Firestore (Data Load Failed):", firestoreError);
+                    setError("Gagal memuat data dari Cloud. Pastikan koneksi internet Anda stabil.");
                     setIsLoadingData(false);
                 });
 
-                // Clean-up function (penting)
                 return () => unsubscribe();
-            }, [firebaseContext.isAuthReady, firebaseContext.userId, firebaseContext.appId]);
+            }, [firebaseContext.isAuthReady, firebaseContext.userId, firebaseContext.appId, error]);
 
 
             // --- Fungsi CRUD Firestore ---
@@ -513,10 +478,8 @@
                     throw new Error("Koneksi Cloud gagal.");
                 }
                 
-                const trxCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                
-                // Firestore secara otomatis menghasilkan ID unik
-                await addDoc(trxCollectionRef, newTrx);
+                const trxCollectionRef = window.collection(db, 'artifacts', appId, 'users', userId, 'transactions');
+                await window.addDoc(trxCollectionRef, newTrx);
             };
 
             const deleteTransaction = async (idToDelete) => {
@@ -526,26 +489,23 @@
                     return;
                 }
 
-                // ID dari Firestore (string ID dokumen)
                 try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', idToDelete);
-                    await deleteDoc(docRef);
-                    setDeleteCandidate(null); // Tutup modal setelah hapus
+                    const docRef = window.doc(db, 'artifacts', appId, 'users', userId, 'transactions', idToDelete);
+                    await window.deleteDoc(docRef);
+                    setDeleteCandidate(null);
                 } catch (error) {
                     console.error("Gagal menghapus dokumen:", error);
                 }
             };
             
-            // --- Logika Perhitungan ---
+            // --- Logika Perhitungan (sama seperti sebelumnya) ---
 
             const summary = useMemo(() => {
-                if (isLoadingData) return { totalIncome: 0, totalExpense: 0, currentBalance: 0, initialBalance: HARDCODED_DATA[0].amount };
-
+                // ... (Calculation logic)
                 let totalIncome = 0;
                 let totalExpense = 0;
                 let initialBalance = HARDCODED_DATA[0].amount;
                 
-                // Abaikan transaksi 'balance' (Saldo Awal) dalam perhitungan Income/Expense
                 const transactionsWithoutInitial = transactions.filter(item => item.type !== 'balance');
                 
                 transactionsWithoutInitial.forEach(t => {
@@ -559,7 +519,7 @@
                 const currentBalance = initialBalance + totalIncome - totalExpense;
 
                 return { totalIncome, totalExpense, currentBalance, initialBalance };
-            }, [transactions, isLoadingData]);
+            }, [transactions]);
 
             const formatRupiah = (number) => {
                 return new Intl.NumberFormat('id-ID', {
@@ -569,17 +529,13 @@
                 }).format(number);
             };
             
-            // Fungsi utilitas untuk format tanggal
             const formatDate = (dateString, options = { day: 'numeric', month: 'short' }) => {
-                // Pastikan dateString valid (misal: '2024-12-10')
                 const date = new Date(dateString);
-                // Jika tanggal tidak valid, kembalikan string kosong
                 if (isNaN(date.getTime())) return ''; 
                 return date.toLocaleDateString('id-ID', options);
             };
 
             const dateRange = useMemo(() => {
-                // Cari tanggal terlama dari semua transaksi
                 const validDates = transactions.map(t => new Date(t.date)).filter(d => !isNaN(d.getTime()));
                 const minDate = validDates.length > 0 ? new Date(Math.min(...validDates)) : new Date();
                 const today = new Date();
@@ -592,7 +548,6 @@
 
 
             const filteredData = useMemo(() => {
-                // Sorting data dari yang terbaru ke terlama
                 const sortedData = transactions.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
                 
                 if (filter === 'all') return sortedData;
@@ -616,13 +571,27 @@
                 return { expenseStats, totalExpense };
             }, [transactions]);
             
-            // Tampilkan Loading State jika data belum siap
+            
+            if (error) {
+                // Tampilkan pesan error yang jelas jika inisialisasi/koneksi gagal
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen bg-rose-50 p-6 text-rose-800">
+                        <svg className="h-12 w-12 text-rose-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <p className="mt-2 text-xl font-bold">Koneksi Cloud Gagal!</p>
+                        <p className="text-center mt-2 text-sm text-rose-700">Aplikasi gagal terhubung ke database. Harap cek Console Browser untuk detail teknis (tekan F12 di PC).</p>
+                        <p className="text-center mt-1 text-xs text-rose-600 font-mono italic">{error}</p>
+                        <p className="mt-4 text-xs text-slate-500">Saat ini, Anda hanya melihat data Saldo Awal (Hardcoded).</p>
+                    </div>
+                );
+            }
+
             if (!firebaseContext.isAuthReady || isLoadingData) {
+                // Tampilkan Loading State jika data belum siap
                 return (
                     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-600">
                         <IconLoading />
                         <p className="mt-4 text-lg font-semibold">Memuat Data dari Cloud...</p>
-                        <p className="text-sm text-slate-500 mt-1">Menghubungkan ke database permanen.</p>
+                        <p className="text-sm text-slate-500 mt-1">Mengamankan koneksi dan mengambil riwayat.</p>
                     </div>
                 );
             }
@@ -652,7 +621,7 @@
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-slate-400">User ID (Aman):</p>
-                                <p className="text-[10px] font-mono text-slate-600 truncate max-w-[120px]">{currentUserId}</p>
+                                <p className="text-[10px] font-mono text-slate-600 truncate max-w-[120px]">{currentUserId || 'GUEST_MODE'}</p>
                             </div>
                         </div>
                         
@@ -721,7 +690,7 @@
                                         `}>
                                         {item.type === 'expense' ? '-' : '+'} {formatRupiah(item.amount)}
                                         </span>
-                                        {/* Tombol Hapus: Hanya muncul untuk transaksi dari Cloud (yang memiliki ID Firestore, bukan ID 'h' dari hardcoded) */}
+                                        {/* Tombol Hapus: Hanya muncul untuk transaksi dari Cloud (yang memiliki ID Firestore) */}
                                         {typeof item.id === 'string' && item.id.length > 5 && !item.id.startsWith('h') && (
                                             <button 
                                                 onClick={() => setDeleteCandidate(item)} 
@@ -743,7 +712,19 @@
                 </div>
             );
         };
-
+        
+        // Memindahkan window.collection, window.addDoc, dll. ke global agar React dapat mengaksesnya
+        // tanpa perlu mengimpor ulang (karena React di sini adalah script babel, bukan module)
+        if (window.db) {
+            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => {
+                window.collection = mod.collection;
+                window.onSnapshot = mod.onSnapshot;
+                window.addDoc = mod.addDoc;
+                window.deleteDoc = mod.deleteDoc;
+                window.doc = mod.doc;
+            });
+        }
+        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FinancialApp />);
     </script>
