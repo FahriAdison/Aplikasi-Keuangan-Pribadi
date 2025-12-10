@@ -3,364 +3,618 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catatan Keuangan Pribadi</title>
-    <!-- Load Tailwind CSS -->
+    <title>Keuanganku Pribadi</title>
+    <!-- === PWA MANIFEST & ICONS UNTUK 'TAMBAHKAN KE LAYAR UTAMA' === -->
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="application-name" content="Keuanganku">
+    <meta name="apple-mobile-web-app-title" content="Keuanganku">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Icon Utama (menggunakan link yang Anda berikan) -->
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpNGr8O0BhPM9TIcc1pFXzG7qpY93kZ0cwKB2Ce6khQ&s=10" type="image/png">
+    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpNGr8O0BhPM9TIcc1pFXzG7qpY93kZ0cwKB2Ce6khQ&s=10">
+
+    <!-- Tailwind CSS untuk tampilan -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Konfigurasi Font -->
+    <!-- React dan ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel untuk menerjemahkan kode React -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .balance-positive { color: #10B981; }
-        .balance-negative { color: #EF4444; }
+        body { -webkit-tap-highlight-color: transparent; }
+        /* Style untuk menyembunyikan scrollbar di mobile */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; /* IE and Edge */ scrollbar-width: none; /* Firefox */ }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
 
-<div id="app" class="min-h-screen p-4 md:p-8">
-    <div class="max-w-xl mx-auto">
+    <script type="text/babel">
+        // --- Bagian Konstanta & Data Awal ---
+        const { useState, useMemo, useEffect } = React;
+        const LOCAL_STORAGE_KEY = 'financial_transactions_v3';
+
+        const HARDCODED_DATA = [
+            { id: 1, date: '2024-11-02', desc: 'Saldo Awal', category: 'Saldo', amount: 31000, type: 'balance' },
+            { id: 2, date: '2024-11-02', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 3, date: '2024-11-02', desc: 'Profit Rekber 2', category: 'Rekber', amount: 3000, type: 'income' },
+            { id: 4, date: '2024-11-03', desc: 'Profit Rekber (Total 5 Trx)', category: 'Rekber', amount: 30000, type: 'income' },
+            { id: 5, date: '2024-11-04', desc: 'Belanja Mie + Minuman', category: 'Makanan', amount: 16439, type: 'expense' },
+            { id: 6, date: '2024-11-04', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
+            { id: 7, date: '2024-11-04', desc: 'Joki 3 Scenario', category: 'Joki', amount: 15000, type: 'income' },
+            { id: 8, date: '2024-11-05', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 9, date: '2024-11-06', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 28000, type: 'income' },
+            { id: 10, date: '2024-11-07', desc: 'Beli WDP x2', category: 'Game', amount: 54600, type: 'expense' },
+            { id: 11, date: '2024-11-07', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 35000, type: 'income' },
+            { id: 12, date: '2024-11-07', desc: 'Beli Diamond', category: 'Game', amount: 16376, type: 'expense' },
+            { id: 13, date: '2024-11-07', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 13000, type: 'income' },
+            { id: 14, date: '2024-11-08', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
+            { id: 15, date: '2024-11-08', desc: 'Joki 2 Uma', category: 'Joki', amount: 6000, type: 'income' },
+            { id: 16, date: '2024-11-09', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 10000, type: 'income' },
+            { id: 17, date: '2024-11-09', desc: 'Bantu Teman', category: 'Sosial', amount: 35000, type: 'expense' },
+            { id: 18, date: '2024-11-09', desc: 'Upgrade Cloud Phone', category: 'Operasional', amount: 20023, type: 'expense' },
+            { id: 19, date: '2024-11-10', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 20, date: '2024-11-11', desc: 'Beli Mie', category: 'Makanan', amount: 10100, type: 'expense' },
+            { id: 21, date: '2024-11-12', desc: 'Joki 4 Uma', category: 'Joki', amount: 12000, type: 'income' },
+            { id: 22, date: '2024-11-12', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 23, date: '2024-11-13', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
+            { id: 24, date: '2024-11-15', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 15000, type: 'income' },
+            { id: 25, date: '2024-11-15', desc: 'Beli Indomie', category: 'Makanan', amount: 14300, type: 'expense' },
+            { id: 26, date: '2024-11-18', desc: 'Tarik SociaBuzz', category: 'Lainnya', amount: 14150, type: 'income' },
+            { id: 27, date: '2024-11-19', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 21260, type: 'income' },
+            { id: 28, date: '2024-11-20', desc: 'Profit Rekber (Total 5 Trx)', category: 'Rekber', amount: 25000, type: 'income' },
+            { id: 29, date: '2024-11-20', desc: 'Cloud Phone (Harian + Bulanan)', category: 'Operasional', amount: 136863, type: 'expense' },
+            { id: 30, date: '2024-11-21', desc: 'Profit Rekber 1', category: 'Rekber', amount: 15000, type: 'income' },
+            { id: 31, date: '2024-11-21', desc: 'Profit Rekber 2', category: 'Rekber', amount: 22780, type: 'income' },
+            { id: 32, date: '2024-11-22', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 23000, type: 'income' },
+            { id: 33, date: '2024-11-23', desc: 'Beli WDP', category: 'Game', amount: 28725, type: 'expense' },
+            { id: 34, date: '2024-11-24', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 23000, type: 'income' },
+            { id: 35, date: '2024-11-24', desc: 'WDP 2 Orang (Menang Turnamen)', category: 'Game', amount: 56648, type: 'expense' },
+            { id: 36, date: '2024-11-25', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
+            { id: 37, date: '2024-11-26', desc: 'Jual 10 Akun Google', category: 'Jualan Akun', amount: 8000, type: 'income' },
+            { id: 38, date: '2024-11-26', desc: 'Profit Rekber (Total 4 Trx)', category: 'Rekber', amount: 52100, type: 'income' },
+            { id: 39, date: '2024-11-27', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 15000, type: 'income' },
+            { id: 40, date: '2024-11-28', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
+            { id: 41, date: '2024-11-28', desc: 'Profit Rekber 2 (After Admin)', category: 'Rekber', amount: 11933, type: 'income' },
+            { id: 42, date: '2024-11-29', desc: 'Profit Rekber (Total 4 Trx)', category: 'Rekber', amount: 40000, type: 'income' },
+            { id: 43, date: '2024-11-29', desc: 'Penyesuaian Saldo', category: 'Lainnya', amount: 10248, type: 'income' },
+            { id: 44, date: '2024-11-30', desc: 'Beli Premium Pass', category: 'Game', amount: 36630, type: 'expense' },
+            { id: 45, date: '2024-11-30', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
+            { id: 46, date: '2024-11-30', desc: 'Hadiah Pembukaan Server', category: 'Lainnya', amount: 8800, type: 'expense' },
+            { id: 47, date: '2024-12-01', desc: 'Profit Rekber 1', category: 'Rekber', amount: 3000, type: 'income' },
+            { id: 48, date: '2024-12-01', desc: 'Joki 61 Uma', category: 'Joki', amount: 185000, type: 'income' },
+            { id: 49, date: '2024-12-01', desc: 'Tarik Tunai', category: 'Tarik Tunai', amount: 50000, type: 'expense' },
+            { id: 50, date: '2024-12-02', desc: 'Profit Rekber 1', category: 'Rekber', amount: 10000, type: 'income' },
+            { id: 51, date: '2024-12-02', desc: 'Token PLN', category: 'Listrik', amount: 48750, type: 'expense' },
+            { id: 52, date: '2024-12-02', desc: 'Isi Ulang Saldo', category: 'Topup Saldo', amount: 50000, type: 'income' },
+            { id: 53, date: '2024-12-03', desc: 'Profit Rekber (Total 3 Trx)', category: 'Rekber', amount: 20000, type: 'income' },
+            { id: 54, date: '2024-12-04', desc: 'Joki 7 Uma', category: 'Joki', amount: 21000, type: 'income' },
+            { id: 55, date: '2024-12-05', desc: 'Beli Headset', category: 'Gadget', amount: 132340, type: 'expense' },
+            { id: 56, date: '2024-12-06', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 57, date: '2024-12-08', desc: 'Beli 66 Paid Jewels (Ada potongan)', category: 'Game', amount: 22951, type: 'expense' },
+            { id: 58, date: '2024-12-08', desc: 'Rawat Akun 2 Minggu', category: 'Joki', amount: 50000, type: 'income' },
+            { id: 59, date: '2024-12-08', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 60, date: '2024-12-09', desc: 'Perpanjang Cloud Phone', category: 'Operasional', amount: 132090, type: 'expense' },
+            { id: 61, date: '2024-12-09', desc: 'Profit Rekber (Total 2 Trx)', category: 'Rekber', amount: 8000, type: 'income' },
+            { id: 62, date: '2024-12-09', desc: 'Token PLN', category: 'Listrik', amount: 45000, type: 'expense' },
+            { id: 63, date: '2024-12-09', desc: 'Isi Ulang', category: 'Topup Saldo', amount: 50000, type: 'income' },
+            { id: 64, date: '2024-12-10', desc: 'Profit Rekber 1', category: 'Rekber', amount: 10000, type: 'income' },
+        ];
         
-        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Catatan Keuangan Pribadi</h1>
+        // Palet warna untuk grafik kategori
+        const CATEGORY_COLORS = [
+            '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', 
+            '#3b82f6', '#8b5cf6', '#d946ef', '#f472b6', '#64748b'
+        ];
 
-        <!-- Status & Notifikasi -->
-        <div id="status-card" class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl shadow-md mb-6">
-            <p id="auth-status" class="font-semibold text-center text-sm">Memuat status otentikasi...</p>
-            <p id="user-id-display" class="text-xs text-center mt-1"></p>
-        </div>
+        // --- Ikon Sederhana (SVG) ---
+        const IconWallet = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>;
+        const IconUp = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/></svg>;
+        const IconDown = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500"><circle cx="12" cy="12" r="10"/><path d="m8 12 4 4 4-4"/><path d="M12 8v8"/></svg>;
+        const IconList = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
+        const IconAdd = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const IconForm = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>;
+        const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-400 hover:text-rose-600 transition-colors"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M15 3h-6"/></svg>;
+        const IconChart = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/><path d="M3 20h18"/></svg>;
 
-        <!-- Dashboard Saldo -->
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-            <p class="text-sm font-medium text-gray-500 mb-2">Saldo Saat Ini</p>
-            <div id="current-balance" class="text-4xl font-bold text-blue-700">Rp 0</div>
-            
-            <div class="flex justify-between mt-4 space-x-4">
-                <div class="flex-1 p-3 bg-green-50 rounded-lg text-center">
-                    <p class="text-xs font-medium text-gray-600">Masuk</p>
-                    <p id="total-income" class="text-xl font-bold text-green-600">Rp 0</p>
-                </div>
-                <div class="flex-1 p-3 bg-red-50 rounded-lg text-center">
-                    <p class="text-xs font-medium text-gray-600">Keluar</p>
-                    <p id="total-expense" class="text-xl font-bold text-red-600">Rp 0</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Form Transaksi Baru -->
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-            <h2 class="text-xl font-semibold mb-4">Tambah Transaksi Baru</h2>
-            <form id="transaction-form" class="space-y-4">
-                
-                <div class="flex space-x-2">
-                    <button type="button" id="type-pemasukan" class="flex-1 p-3 rounded-lg font-bold bg-green-500 text-white shadow-md transition duration-150 active:scale-95">Pemasukan (+)</button>
-                    <button type="button" id="type-pengeluaran" class="flex-1 p-3 rounded-lg font-bold bg-gray-200 text-gray-700 shadow-md transition duration-150 active:scale-95">Pengeluaran (-)</button>
-                    <input type="hidden" id="transaction-type" value="pemasukan">
-                </div>
-
-                <div>
-                    <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
-                    <input type="number" id="amount" placeholder="Contoh: 50000" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
-                </div>
-
-                <div>
-                    <label for="description" class="block text-sm font-medium text-gray-700">Keterangan</label>
-                    <input type="text" id="description" placeholder="Contoh: Gaji bulanan, Beli kopi" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
-                </div>
-
-                <div>
-                    <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                    <input type="date" id="date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
-                </div>
-
-                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-150 active:scale-95">Catat Transaksi</button>
-            </form>
-        </div>
-
-        <!-- Daftar Transaksi -->
-        <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Riwayat Transaksi</h2>
-            <div id="transactions-list" class="space-y-3">
-                <!-- Data transaksi akan dimuat di sini -->
-                <p id="loading-message" class="text-center text-gray-500">Memuat data dari Cloud Firestore...</p>
-            </div>
-            <p id="no-data-message" class="text-center text-gray-500 hidden mt-4">Belum ada transaksi. Silakan tambahkan satu!</p>
-        </div>
         
-    </div>
-</div>
+        // --- Komponen Modal Konfirmasi Hapus ---
+        const DeleteModal = ({ transaction, onConfirm, onClose, formatRupiah }) => {
+            if (!transaction) return null;
 
-<!-- Firebase SDK Imports (Module) -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+                    <div 
+                        className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transition-all transform scale-100"
+                        onClick={(e) => e.stopPropagation()} // Mencegah klik di dalam modal menutup modal
+                    >
+                        <h3 className="text-lg font-bold text-rose-600 mb-3">Konfirmasi Hapus</h3>
+                        <p className="text-sm text-slate-600 mb-4">
+                            Anda yakin ingin menghapus transaksi ini secara permanen?
+                        </p>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-5">
+                            <p className="font-bold">{transaction.desc}</p>
+                            <p className={`text-sm ${transaction.type === 'expense' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                {transaction.type === 'expense' ? 'Pengeluaran' : 'Pemasukan'}: {formatRupiah(transaction.amount)}
+                            </p>
+                        </div>
 
-    // --- 1. HARDCODED FIREBASE CONFIGURATION (Fixes Vercel Env Issue) ---
-    // Konfigurasi ini diambil langsung dari detail proyek Firebase Anda.
-    const firebaseConfig = {
-        apiKey: "AIzaSyBWGcB71XutjePkzHM6NUMhuIeoUhk4S8I",
-        authDomain: "keuangan-vercel.firebaseapp.com",
-        projectId: "keuangan-vercel",
-        storageBucket: "keuangan-vercel.firebasestorage.app",
-        messagingSenderId: "314524581902",
-        appId: "1:314524581902:web:2fec2d7c086cb739db3c5f",
-        measurementId: "G-YH4KXP51KL" // Opsional
-    };
-
-    // --- 2. ENVIRONMENT VARIABLES (Keep for Canvas Compatibility) ---
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    // Gunakan variabel ini karena Vercel/GitHub menyediakan token otentikasi kustom
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-    let app;
-    let db;
-    let auth;
-    let userId = null;
-    
-    // Elemen UI
-    const authStatusEl = document.getElementById('auth-status');
-    const userIdDisplayEl = document.getElementById('user-id-display');
-    const loadingMessageEl = document.getElementById('loading-message');
-    const noDataMessageEl = document.getElementById('no-data-message');
-    const totalIncomeEl = document.getElementById('total-income');
-    const totalExpenseEl = document.getElementById('total-expense');
-    const currentBalanceEl = document.getElementById('current-balance');
-    const transactionsListEl = document.getElementById('transactions-list');
-    const transactionForm = document.getElementById('transaction-form');
-    const typePemasukanBtn = document.getElementById('type-pemasukan');
-    const typePengeluaranBtn = document.getElementById('type-pengeluaran');
-    const transactionTypeInput = document.getElementById('transaction-type');
-    
-    // Set tanggal hari ini secara default
-    document.getElementById('date').valueAsDate = new Date();
-    
-    // --- Helper Functions ---
-    const formatRupiah = (number) => {
-        return 'Rp ' + number.toLocaleString('id-ID');
-    };
-
-    const getCollectionPath = (uid) => {
-        // Menggunakan jalur data PRIVATE yang aman dan sesuai dengan Aturan Keamanan.
-        return `artifacts/${appId}/users/${uid}/transactions`;
-    };
-
-    const handleTransactionTypeChange = (newType) => {
-        transactionTypeInput.value = newType;
-        if (newType === 'pemasukan') {
-            typePemasukanBtn.classList.remove('bg-gray-200', 'text-gray-700');
-            typePemasukanBtn.classList.add('bg-green-500', 'text-white');
-            typePengeluaranBtn.classList.remove('bg-red-500', 'text-white');
-            typePengeluaranBtn.classList.add('bg-gray-200', 'text-gray-700');
-        } else {
-            typePengeluaranBtn.classList.remove('bg-gray-200', 'text-gray-700');
-            typePengeluaranBtn.classList.add('bg-red-500', 'text-white');
-            typePemasukanBtn.classList.remove('bg-green-500', 'text-white');
-            typePemasukanBtn.classList.add('bg-gray-200', 'text-gray-700');
-        }
-    };
-
-    // --- Firebase Initialization and Auth ---
-    async function initializeFirebase() {
-        if (!firebaseConfig.apiKey) {
-            authStatusEl.textContent = "Error: Konfigurasi Firebase Hilang/Gagal Diinisialisasi!";
-            authStatusEl.classList.remove('text-indigo-800');
-            authStatusEl.classList.add('text-red-800');
-            return;
-        }
-
-        try {
-            setLogLevel('debug'); // Untuk debugging di konsol
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-
-            // 1. Tanda tangani pengguna menggunakan token kustom atau anonim
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
+                        <div className="flex justify-end gap-3">
+                            <button 
+                                onClick={onClose}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-200 rounded-lg hover:bg-slate-300 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                onClick={() => onConfirm(transaction.id)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 transition-colors"
+                            >
+                                Hapus Permanen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- Komponen Grafik Donut ---
+        const CategoryChart = ({ stats, totalExpense }) => {
+            if (totalExpense === 0) {
+                return <p className="text-center text-slate-500 py-4">Belum ada data pengeluaran untuk ditampilkan.</p>;
             }
 
-            // 2. Dengarkan perubahan status otentikasi
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    authStatusEl.textContent = "Database AKTIF & AMAN.";
-                    userIdDisplayEl.textContent = `ID Pengguna: ${userId} | Jalur Data: artifacts/${appId}/users/${userId}/...`;
-                    authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
-                    authStatusEl.classList.add('text-green-800');
+            // Hitung persentase dan buat array untuk CSS cone-gradient
+            let cumulativePercent = 0;
+            const segments = stats.map(([category, amount], index) => {
+                const percent = (amount / totalExpense) * 100;
+                const start = cumulativePercent;
+                cumulativePercent += percent;
+                const end = cumulativePercent;
+
+                return {
+                    category,
+                    percent,
+                    start,
+                    end,
+                    color: CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+                };
+            }).filter(s => s.percent > 0);
+
+            // Buat string untuk style background cone-gradient
+            const coneGradient = segments.map(s => 
+                `${s.color} ${s.start}% ${s.end}%`
+            ).join(', ');
+
+            return (
+                <div className="bg-white p-4 rounded-xl shadow-md border border-slate-100">
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+                        <IconChart /> Breakdown Pengeluaran
+                    </h2>
+                    <div className="flex flex-col md:flex-row items-center">
+                        <div className="w-32 h-32 flex items-center justify-center relative flex-shrink-0 mb-4 md:mb-0">
+                            <div 
+                                className="w-full h-full rounded-full"
+                                style={{
+                                    background: `conic-gradient(${coneGradient})`
+                                }}
+                            ></div>
+                            <div className="absolute w-20 h-20 bg-white rounded-full shadow-inner"></div>
+                        </div>
+
+                        <ul className="flex-grow w-full space-y-2 md:pl-6">
+                            {segments.map((s, index) => (
+                                <li key={s.category} className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center">
+                                        <span 
+                                            className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
+                                            style={{ backgroundColor: s.color }}
+                                        ></span>
+                                        <span className="text-slate-700">{s.category}</span>
+                                    </div>
+                                    <span className="font-semibold text-slate-800">{s.percent.toFixed(1)}%</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            );
+        };
+
+        
+        const InputForm = ({ onAddTransaction }) => {
+            const today = new Date().toISOString().split('T')[0];
+            const [input, setInput] = useState({
+                date: today,
+                desc: '',
+                category: 'Rekber',
+                amount: '',
+                type: 'income',
+            });
+            const [message, setMessage] = useState('');
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setInput(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const newTransaction = {
+                    ...input,
+                    amount: parseInt(input.amount.replace(/\./g, ''), 10), // Hapus titik dan ubah ke integer
+                    id: Date.now(),
+                };
+
+                if (!newTransaction.desc || !newTransaction.amount || isNaN(newTransaction.amount) || newTransaction.amount <= 0) {
+                    setMessage('Mohon isi Keterangan dan Jumlah (angka positif) dengan benar.');
+                    return;
+                }
+
+                onAddTransaction(newTransaction);
+                setMessage('Transaksi berhasil ditambahkan!');
+                setInput({
+                    date: today,
+                    desc: '',
+                    category: input.type === 'income' ? 'Rekber' : 'Makanan',
+                    amount: input.amount, // Biarkan jumlah tetap diisi jika ingin menambah cepat, tapi reset keterangan
+                    type: input.type,
+                });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const formatAmount = (value) => {
+                const num = value.toString().replace(/\D/g, ''); // Hapus semua non-digit
+                return num ? new Intl.NumberFormat('id-ID').format(num) : '';
+            };
+
+            const handleAmountChange = (e) => {
+                const { value } = e.target;
+                // Hanya simpan angka murni ke state (tanpa titik), tapi format di input field
+                const rawValue = value.replace(/\D/g, '');
+                setInput(prev => ({ ...prev, amount: rawValue }));
+            };
+            
+            const expenseCategories = ['Makanan', 'Game', 'Operasional', 'Listrik', 'Gadget', 'Sosial', 'Tarik Tunai', 'Lainnya Pengeluaran'];
+            const incomeCategories = ['Rekber', 'Joki', 'Jualan Akun', 'Topup Saldo', 'Lainnya Pemasukan'];
+            
+            const currentCategories = input.type === 'income' ? incomeCategories : expenseCategories;
+            
+            // Set kategori default jika kategori saat ini tidak valid untuk tipe baru
+            useEffect(() => {
+                if (!currentCategories.includes(input.category) && input.category !== 'Saldo') {
+                    setInput(prev => ({
+                        ...prev,
+                        category: currentCategories[0]
+                    }));
+                }
+            }, [input.type]);
+
+            return (
+                <div className="bg-white p-4 rounded-xl shadow-md border border-slate-100">
+                    <h3 className="text-md font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <IconForm /> Tambah Transaksi Baru
+                    </h3>
                     
-                    // Setelah otentikasi berhasil, mulai mendengarkan data Firestore
-                    listenForTransactions();
-                } else {
-                    userId = null;
-                    authStatusEl.textContent = "Error: Otentikasi Gagal. Tidak ada pengguna yang masuk.";
-                    userIdDisplayEl.textContent = 'Silakan periksa Aturan Keamanan Firebase Anda.';
-                    authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
-                    authStatusEl.classList.add('text-red-800');
-                }
-            });
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                        {/* Tipe Transaksi */}
+                        <div className="flex bg-slate-100 rounded-lg p-1 text-sm">
+                            <button 
+                                type="button" 
+                                onClick={() => setInput(prev => ({ ...prev, type: 'income', category: 'Rekber' }))} 
+                                className={`flex-1 py-1 rounded-md font-medium transition-all ${input.type === 'income' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}
+                            >
+                                Pemasukan
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => setInput(prev => ({ ...prev, type: 'expense', category: 'Makanan' }))} 
+                                className={`flex-1 py-1 rounded-md font-medium transition-all ${input.type === 'expense' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-500'}`}
+                            >
+                                Pengeluaran
+                            </button>
+                        </div>
 
-        } catch (error) {
-            console.error("Gagal menginisialisasi Firebase atau Otentikasi:", error);
-            authStatusEl.textContent = `Error Otentikasi: ${error.code}. Periksa Konsol & Konfigurasi Firebase.`;
-            authStatusEl.classList.remove('text-indigo-800');
-            authStatusEl.classList.add('text-red-800');
-        }
-    }
+                        {/* Tanggal */}
+                        <input
+                            type="date"
+                            name="date"
+                            value={input.date}
+                            onChange={handleChange}
+                            className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                        />
 
-    // --- Firestore Data Listener ---
-    function listenForTransactions() {
-        if (!db || !userId) return; 
+                        {/* Keterangan */}
+                        <input
+                            type="text"
+                            name="desc"
+                            placeholder="Keterangan (e.g., Profit Rekber, Beli Mie)"
+                            value={input.desc}
+                            onChange={handleChange}
+                            className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                        
+                        {/* Jumlah */}
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 font-semibold text-sm">Rp</span>
+                            <input
+                                type="text"
+                                name="amount"
+                                placeholder="Jumlah (e.g., 5.000, 150.000)"
+                                value={formatAmount(input.amount)}
+                                onChange={handleAmountChange}
+                                className="w-full p-2 pl-10 border border-slate-300 rounded-lg text-sm"
+                                inputMode="numeric"
+                            />
+                        </div>
 
-        const transactionsRef = collection(db, getCollectionPath(userId));
-        const q = query(transactionsRef);
-
-        // onSnapshot menyediakan pembaruan real-time
-        onSnapshot(q, (snapshot) => {
-            const transactions = [];
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                transactions.push({ id: doc.id, ...data });
-
-                const amount = parseInt(data.amount);
-                if (data.type === 'pemasukan') {
-                    totalIncome += amount;
-                } else if (data.type === 'pengeluaran') {
-                    totalExpense += amount;
-                }
-            });
-
-            // Sortir transaksi berdasarkan tanggal (terbaru dulu)
-            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            // Perbarui UI
-            updateDashboard(totalIncome, totalExpense);
-            renderTransactions(transactions);
-
-        }, (error) => {
-            console.error("Gagal mendengarkan transaksi:", error);
-            // Hanya tampilkan pesan error jika ini BUKAN error konfigurasi
-            if (error.code !== "permission-denied") {
-                authStatusEl.textContent = "Error: Gagal Memuat Data. Cek Aturan Keamanan Firestore.";
-                authStatusEl.classList.remove('text-indigo-800', 'text-green-800');
-                authStatusEl.classList.add('text-red-800');
-            }
-        });
-    }
-
-    // --- UI Update Functions ---
-    function updateDashboard(income, expense) {
-        const balance = income - expense;
-        totalIncomeEl.textContent = formatRupiah(income);
-        totalExpenseEl.textContent = formatRupiah(expense);
-        currentBalanceEl.textContent = formatRupiah(balance);
-
-        currentBalanceEl.classList.remove('text-blue-700', 'text-red-700');
-        if (balance >= 0) {
-            currentBalanceEl.classList.add('text-blue-700');
-        } else {
-            currentBalanceEl.classList.add('text-red-700');
-        }
-    }
-
-    function renderTransactions(transactions) {
-        transactionsListEl.innerHTML = '';
-        loadingMessageEl.classList.add('hidden');
-
-        if (transactions.length === 0) {
-            noDataMessageEl.classList.remove('hidden');
-            return;
-        }
-
-        noDataMessageEl.classList.add('hidden');
-
-        transactions.forEach(t => {
-            const isIncome = t.type === 'pemasukan';
-            const color = isIncome ? 'border-green-400' : 'border-red-400';
-            const sign = isIncome ? '+' : '-';
-
-            const item = document.createElement('div');
-            item.className = `p-3 border-l-4 ${color} bg-gray-50 rounded-lg shadow-sm flex justify-between items-center transition duration-150 hover:bg-gray-100`;
-            item.innerHTML = `
-                <div>
-                    <p class="font-semibold text-gray-800">${t.description}</p>
-                    <p class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        {/* Kategori */}
+                        <select
+                            name="category"
+                            value={input.category}
+                            onChange={handleChange}
+                            className="w-full p-2 border border-slate-300 rounded-lg text-sm appearance-none bg-white"
+                        >
+                            {currentCategories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                        
+                        {/* Tombol Submit */}
+                        <button
+                            type="submit"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                        >
+                            <IconAdd /> Catat Transaksi
+                        </button>
+                        
+                        {message && (
+                            <div className={`text-center py-2 rounded-lg text-sm font-medium ${message.includes('berhasil') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                {message}
+                            </div>
+                        )}
+                    </form>
                 </div>
-                <div class="text-right">
-                    <p class="font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}">${sign} ${formatRupiah(parseInt(t.amount))}</p>
-                    <button data-id="${t.id}" class="delete-btn text-xs text-red-500 hover:text-red-700 mt-1">Hapus</button>
-                </div>
-            `;
-            transactionsListEl.appendChild(item);
-        });
+            );
+        };
 
-        // Attach delete listeners
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', handleDeleteTransaction);
-        });
-    }
 
-    // --- Event Handlers ---
-    typePemasukanBtn.addEventListener('click', () => handleTransactionTypeChange('pemasukan'));
-    typePengeluaranBtn.addEventListener('click', () => handleTransactionTypeChange('pengeluaran'));
+        const FinancialApp = () => {
+            const [transactions, setTransactions] = useState(HARDCODED_DATA);
+            const [filter, setFilter] = useState('all');
+            const [deleteCandidate, setDeleteCandidate] = useState(null); // State untuk modal hapus
 
-    transactionForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+            // Fungsi utilitas untuk format tanggal
+            const formatDate = (dateString, options = { day: 'numeric', month: 'short' }) => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID', options);
+            };
 
-        if (!userId) {
-            console.error('Aplikasi belum terotentikasi. Tidak dapat menyimpan data.');
-            return;
-        }
-
-        const amount = document.getElementById('amount').value;
-        const description = document.getElementById('description').value;
-        const date = document.getElementById('date').value; 
-        const type = transactionTypeInput.value;
-
-        if (!amount || !description || !date) return;
-
-        try {
-            const transactionsRef = collection(db, getCollectionPath(userId));
-            await addDoc(transactionsRef, {
-                amount: amount,
-                description: description,
-                date: date,
-                type: type,
-                createdAt: new Date().toISOString()
-            });
-
-            // Reset form setelah berhasil
-            transactionForm.reset();
-            document.getElementById('date').valueAsDate = new Date(); // Reset tanggal
-            handleTransactionTypeChange('pemasukan'); // Reset tipe
+            // 1. Muat data dari Local Storage saat aplikasi pertama dimuat
+            useEffect(() => {
+                try {
+                    const savedTransactions = localStorage.getItem(LOCAL_STORAGE_KEY);
+                    let newTransactions = [];
+                    if (savedTransactions) {
+                        newTransactions = JSON.parse(savedTransactions);
+                    }
+                    // Gabungkan data hardcoded dengan data yang tersimpan
+                    setTransactions([...HARDCODED_DATA, ...newTransactions]);
+                } catch (error) {
+                    console.error("Gagal memuat data dari Local Storage:", error);
+                    setTransactions(HARDCODED_DATA);
+                }
+            }, []);
             
-        } catch (error) {
-            console.error("Gagal menambahkan transaksi:", error);
-            // Gunakan console.error alih-alih alert
-        }
-    });
-
-    async function handleDeleteTransaction(e) {
-        const transactionId = e.target.dataset.id;
-        
-        if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-            return;
-        }
-        
-        try {
-            const transactionDocRef = doc(db, getCollectionPath(userId), transactionId);
-            await deleteDoc(transactionDocRef);
-        } catch (error) {
-            console.error("Gagal menghapus transaksi:", error);
-        }
-    }
+            // 2. Simpan data ke Local Storage setiap kali ada perubahan
+            useEffect(() => {
+                // Hanya simpan transaksi yang ID-nya besar (asumsi ditambahkan oleh user)
+                // ID > 64 (ID terakhir dari HARDCODED_DATA)
+                const userAddedTransactions = transactions.filter(t => t.id > 64);
+                try {
+                     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userAddedTransactions));
+                } catch (error) {
+                    console.error("Gagal menyimpan data ke Local Storage:", error);
+                }
+            }, [transactions]);
 
 
-    // --- Start Application ---
-    initializeFirebase();
+            const addTransaction = (newTrx) => {
+                // Memberi ID yang sangat besar agar mudah dibedakan dari data historis
+                newTrx.id = Date.now(); 
+                setTransactions(prev => [...prev, newTrx]);
+            };
 
-</script>
+            const deleteTransaction = (idToDelete) => {
+                setTransactions(prev => prev.filter(t => t.id !== idToDelete));
+                setDeleteCandidate(null); // Tutup modal setelah hapus
+            };
+
+            const summary = useMemo(() => {
+                let totalIncome = 0;
+                let totalExpense = 0;
+                let initialBalance = HARDCODED_DATA[0].amount;
+                
+                const transactionsWithoutInitial = transactions.filter(item => item.type !== 'balance');
+                
+                transactionsWithoutInitial.forEach(t => {
+                    // Pemasukan: type='income' ATAU Kategori Topup Saldo (untuk pengelompokan yang benar)
+                    if (t.type === 'income' || t.category === 'Topup Saldo' || t.category === 'Lainnya Pemasukan') {
+                        totalIncome += t.amount;
+                    } else {
+                        totalExpense += t.amount;
+                    }
+                });
+
+                const currentBalance = initialBalance + totalIncome - totalExpense;
+
+                return { totalIncome, totalExpense, currentBalance, initialBalance };
+            }, [transactions]);
+
+            const dateRange = useMemo(() => {
+                // Cari tanggal terlama dari semua transaksi
+                const dates = transactions.map(t => new Date(t.date));
+                const minDate = dates.length > 0 ? new Date(Math.min(...dates)) : new Date();
+                const today = new Date();
+
+                const start = formatDate(minDate, { day: 'numeric', month: 'short' });
+                const end = formatDate(today, { day: 'numeric', month: 'short', year: 'numeric' }); // Menampilkan tahun di tanggal hari ini
+
+                return `${start} - ${end}`;
+            }, [transactions]);
+
+
+            const filteredData = useMemo(() => {
+                // Sorting data dari yang terbaru ke terlama
+                const sortedData = transactions.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                if (filter === 'all') return sortedData;
+                return sortedData.filter(item => 
+                    item.type === filter || (filter === 'income' && (item.category === 'Topup Saldo' || item.category === 'Lainnya Pemasukan'))
+                );
+            }, [filter, transactions]);
+
+            const categoryStats = useMemo(() => {
+                const stats = {};
+                let totalExpense = 0;
+                
+                transactions.filter(item => item.type === 'expense').forEach(item => {
+                    if (!stats[item.category]) stats[item.category] = 0;
+                    stats[item.category] += item.amount;
+                    totalExpense += item.amount;
+                });
+                
+                const expenseStats = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                
+                return { expenseStats, totalExpense };
+            }, [transactions]);
+
+            const formatRupiah = (number) => {
+                return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                }).format(number);
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-slate-50 pb-10">
+                    {/* Modal Hapus */}
+                    <DeleteModal 
+                        transaction={deleteCandidate}
+                        onConfirm={deleteTransaction}
+                        onClose={() => setDeleteCandidate(null)}
+                        formatRupiah={formatRupiah}
+                    />
+
+                    {/* Header */}
+                    <div className="bg-white p-6 rounded-b-3xl shadow-sm border-b border-slate-100 sticky top-0 z-10">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <span className="p-2 bg-blue-100 rounded-lg"><IconWallet /></span>
+                                Keuanganku
+                                </h1>
+                                {/* BARU: Menampilkan rentang tanggal yang dinamis */}
+                                <p className="text-slate-500 text-xs mt-1 ml-1">{dateRange}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="text-center bg-gradient-to-r from-blue-600 to-blue-500 p-6 rounded-2xl text-white shadow-lg shadow-blue-200">
+                            <p className="text-blue-100 text-sm mb-1">Saldo Saat Ini</p>
+                            <p className="text-3xl font-bold tracking-tight">{formatRupiah(summary.currentBalance)}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 flex items-center gap-3">
+                                <div className="bg-white p-2 rounded-full shadow-sm"><IconUp /></div>
+                                <div>
+                                    <p className="text-xs text-emerald-600 font-medium">Masuk</p>
+                                    <p className="text-sm font-bold text-emerald-700">{formatRupiah(summary.totalIncome)}</p>
+                                </div>
+                            </div>
+                            <div className="bg-rose-50 p-3 rounded-xl border border-rose-100 flex items-center gap-3">
+                                <div className="bg-white p-2 rounded-full shadow-sm"><IconDown /></div>
+                                <div>
+                                    <p className="text-xs text-rose-600 font-medium">Keluar</p>
+                                    <p className="text-sm font-bold text-rose-700">{formatRupiah(summary.totalExpense)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 space-y-6">
+                        
+                        {/* Form Input Transaksi */}
+                        <InputForm onAddTransaction={addTransaction} />
+
+                        {/* Grafik Kategori */}
+                        <CategoryChart 
+                            stats={categoryStats.expenseStats} 
+                            totalExpense={categoryStats.totalExpense} 
+                        />
+
+                        {/* Riwayat */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <IconList /> Riwayat
+                                </h2>
+                                <div className="flex bg-slate-200 rounded-lg p-1">
+                                    <button onClick={() => setFilter('all')} className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${filter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>Semua</button>
+                                    <button onClick={() => setFilter('income')} className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${filter === 'income' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-500'}`}>Masuk</button>
+                                    <button onClick={() => setFilter('expense')} className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${filter === 'expense' ? 'bg-rose-100 text-rose-700 shadow-sm' : 'text-slate-500'}`}>Keluar</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {filteredData.map((item) => (
+                                <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex justify-between items-center group relative">
+                                    <div>
+                                        <p className="font-semibold text-slate-800 text-sm">{item.desc}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{formatDate(item.date)}</span>
+                                            <span className="text-[10px] text-slate-400 uppercase tracking-wide">{item.category}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`font-bold text-sm whitespace-nowrap
+                                        ${item.type === 'income' || item.category === 'Topup Saldo' || item.category === 'Lainnya Pemasukan' ? 'text-emerald-600' : 
+                                            item.type === 'balance' ? 'text-blue-600' : 'text-rose-600'}
+                                        `}>
+                                        {item.type === 'expense' ? '-' : '+'} {formatRupiah(item.amount)}
+                                        </span>
+                                        {/* Tombol Hapus: Hanya muncul untuk transaksi yang ditambahkan user (ID > 64) */}
+                                        {item.id > 64 && (
+                                            <button 
+                                                onClick={() => setDeleteCandidate(item)} 
+                                                className="p-1 rounded-full hover:bg-rose-50 transition-colors flex-shrink-0"
+                                                title="Hapus Transaksi"
+                                            >
+                                                <IconTrash />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                ))}
+                                {filteredData.length === 0 && (
+                                    <p className="text-center text-slate-500 text-sm py-8">Tidak ada transaksi ditemukan.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FinancialApp />);
+    </script>
 </body>
 </html>
 
