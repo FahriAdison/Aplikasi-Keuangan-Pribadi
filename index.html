@@ -3,588 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Catatan Keuangan Pribadi (Public)</title>
-    <!-- Memuat Tailwind CSS -->
+    <title>Catatan Keuangan Pribadi</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Konfigurasi Font -->
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #eef2ff; }
-        .card { box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05); }
-        .input-style { border: 1px solid #d1d5db; padding: 10px; border-radius: 8px; transition: border-color 0.2s; }
-        .input-style:focus { border-color: #3b82f6; outline: none; }
-        .loading-ring { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen flex items-center justify-center">
+<body>
 
-    <div id="app-container" class="max-w-4xl w-full bg-white card rounded-xl p-6 md:p-10">
-        <h1 class="text-3xl font-extrabold text-blue-700 mb-2 text-center">Catatan Keuangan Pribadi</h1>
-        <p class="text-md text-gray-500 mb-6 text-center">Data disimpan di Cloud Firestore yang Aman (Security Rules Telah Diaktifkan)</p>
-
-        <!-- Peringatan Keamanan -->
-        <div id="security-warning" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-lg">
-            <p class="font-bold">Database AKTIF & AMAN</p>
-            <p class="text-sm">Data transaksi di bawah ini tersimpan secara permanen di Cloud Firestore Anda.</p>
-        </div>
-
-        <div id="auth-status" class="mb-4 text-center text-sm font-medium text-gray-600">
-            <span class="loading-ring inline-block mr-2 align-middle"></span> Memuat autentikasi...
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-8">
-            <!-- Kolom Input Transaksi -->
-            <div class="space-y-4 bg-gray-50 p-6 rounded-lg">
-                <h2 class="text-xl font-bold text-blue-600 border-b pb-2 mb-4">Catat Transaksi</h2>
-                <div>
-                    <label for="type" class="block text-sm font-medium text-gray-700">Jenis</label>
-                    <select id="type" class="mt-1 block w-full input-style">
-                        <option value="income">Pemasukan (+)</option>
-                        <option value="expense">Pengeluaran (-)</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                    <input type="text" id="description" class="mt-1 block w-full input-style" placeholder="Contoh: Gaji bulan ini">
-                </div>
-                <div>
-                    <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah (IDR)</label>
-                    <input type="number" id="amount" class="mt-1 block w-full input-style" placeholder="Contoh: 5000000">
-                </div>
-                <button id="add-transaction-btn" onclick="addTransaction()" class="w-full py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out disabled:bg-gray-400">
-                    <span id="btn-text">Tambah Transaksi</span>
-                </button>
-            </div>
-
-            <!-- Kolom Daftar Transaksi -->
-            <div class="space-y-4">
-                <h2 class="text-xl font-bold text-blue-600 border-b pb-2 mb-4">Daftar Transaksi</h2>
-                <div id="loading-data" class="text-center text-gray-500 hidden">
-                    <div class="loading-ring mx-auto mb-2"></div>
-                    Memuat data keuangan...
-                </div>
-                <div id="transactions-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
-                    <!-- Transaksi akan dimuat di sini -->
-                </div>
-                <div id="total-balance" class="mt-4 pt-4 border-t border-gray-200 font-bold text-lg">
-                    Total Saldo: <span id="balance-value" class="text-blue-700">Rp 0</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal (Pengganti alert/confirm) -->
-        <div id="custom-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-                <h3 id="modal-title" class="text-lg font-bold mb-3 text-red-600">Konfirmasi Hapus</h3>
-                <p id="modal-message" class="mb-4 text-gray-700">Apakah Anda yakin ingin menghapus transaksi ini?</p>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeModal()" class="py-2 px-4 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Batal</button>
-                    <button id="modal-confirm-btn" class="py-2 px-4 border rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700">Hapus</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PENTING: Import Firebase SDKs dan Logic Aplikasi -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, collection, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // ==============================================================================
-        // !!! KONFIGURASI FIREBASE ANDA !!!
-        // ==============================================================================
-        const firebaseConfig = {
-          apiKey: "AIzaSyBWGcB71XutjePkzHM6NUMhuIeoUhk4S8I",
-          authDomain: "keuangan-vercel.firebaseapp.com",
-          projectId: "keuangan-vercel",
-          storageBucket: "keuangan-vercel.firebasestorage.app",
-          messagingSenderId: "314524581902",
-          appId: "1:314524581902:web:2fec2d7c086cb739db3c5f",
-          measurementId: "G-YH4KXP51KL" 
-        };
-        const customAuthToken = ""; 
-
-        // Konfigurasi Aplikasi
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'finance-app-v12';
+<div id="app" class="min-h-screen p-4 md:p-8">
+    <div class="max-w-xl mx-auto">
         
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        let userId = null;
-        let isAuthReady = false;
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Catatan Keuangan Pribadi</h1>
 
-        window.db = db;
-        window.auth = auth;
-        window.userId = userId;
+        <!-- Status & Notifikasi -->
+        <div id="status-card" class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl shadow-md mb-6">
+            <p id="auth-status" class="font-semibold text-center text-sm">Memuat status otentikasi...</p>
+            <p id="user-id-display" class="text-xs text-center mt-1"></p>
+        </div>
 
-        /**
-         * Mengubah angka menjadi format mata uang Rupiah.
-         * @param {number} number 
-         * @returns {string}
-         */
-        function formatRupiah(number) {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(number);
-        }
-
-        /**
-         * Mengambil dan mendengarkan perubahan data transaksi secara real-time.
-         */
-        function setupDataListener() {
-            if (!isAuthReady || !userId) {
-                console.warn("Auth belum siap atau userId tidak ditemukan. Data listener dilewati.");
-                return;
-            }
-
-            const transactionsList = document.getElementById('transactions-list');
-            const balanceValue = document.getElementById('balance-value');
-            const loadingData = document.getElementById('loading-data');
+        <!-- Dashboard Saldo -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+            <p class="text-sm font-medium text-gray-500 mb-2">Saldo Saat Ini</p>
+            <div id="current-balance" class="text-4xl font-bold text-blue-700">Rp 0</div>
             
-            loadingData.classList.remove('hidden');
-            transactionsList.innerHTML = ''; 
+            <div class="flex justify-between mt-4 space-x-4">
+                <div class="flex-1 p-3 bg-green-50 rounded-lg text-center">
+                    <p class="text-xs font-medium text-gray-600">Masuk</p>
+                    <p id="total-income" class="text-xl font-bold text-green-600">Rp 0</p>
+                </div>
+                <div class="flex-1 p-3 bg-red-50 rounded-lg text-center">
+                    <p class="text-xs font-medium text-gray-600">Keluar</p>
+                    <p id="total-expense" class="text-xl font-bold text-red-600">Rp 0</p>
+                </div>
+            </div>
+        </div>
 
-            // Path collection: /artifacts/{appId}/users/{userId}/transactions
-            const transactionsRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-            const q = query(transactionsRef); 
-
-            onSnapshot(q, (snapshot) => {
-                loadingData.classList.add('hidden');
+        <!-- Form Transaksi Baru -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4">Tambah Transaksi Baru</h2>
+            <form id="transaction-form" class="space-y-4">
                 
-                // --- Panggil fungsi data awal jika belum ada transaksi ---
-                if (snapshot.empty) {
-                    seedInitialData();
-                    return; // Tunggu data awal dimasukkan, listener akan otomatis aktif lagi
-                }
-                // --------------------------------------------------------
+                <div class="flex space-x-2">
+                    <button type="button" id="type-pemasukan" class="flex-1 p-3 rounded-lg font-bold bg-green-500 text-white shadow-md transition duration-150 active:scale-95">Pemasukan (+)</button>
+                    <button type="button" id="type-pengeluaran" class="flex-1 p-3 rounded-lg font-bold bg-gray-200 text-gray-700 shadow-md transition duration-150 active:scale-95">Pengeluaran (-)</button>
+                    <input type="hidden" id="transaction-type" value="pemasukan">
+                </div>
 
-                let totalBalance = 0;
-                let html = '';
-                let transactions = [];
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
+                    <input type="number" id="amount" placeholder="Contoh: 50000" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
+                </div>
 
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-                    transactions.push({ id: doc.id, ...data });
-                });
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Keterangan</label>
+                    <input type="text" id="description" placeholder="Contoh: Gaji bulanan, Beli kopi" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
+                </div>
 
-                // Urutkan data di klien berdasarkan timestamp terbaru ke terlama
-                transactions.sort((a, b) => (b.timestamp?.toDate() || new Date(0)) - (a.timestamp?.toDate() || new Date(0)));
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                    <input type="date" id="date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" required>
+                </div>
 
-                transactions.forEach(transaction => {
-                    const amount = transaction.type === 'income' ? transaction.amount : -transaction.amount;
-                    totalBalance += amount;
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-150 active:scale-95">Catat Transaksi</button>
+            </form>
+        </div>
 
-                    const color = transaction.type === 'income' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
-                    const sign = transaction.type === 'income' ? '+' : '-';
-                    
-                    // Pastikan timestamp ada sebelum format
-                    const dateDisplay = transaction.timestamp 
-                        ? new Date(transaction.timestamp.toDate()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-                        : 'Tanggal Tidak Diketahui';
+        <!-- Daftar Transaksi -->
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">Riwayat Transaksi</h2>
+            <div id="transactions-list" class="space-y-3">
+                <!-- Data transaksi akan dimuat di sini -->
+                <p id="loading-message" class="text-center text-gray-500">Memuat data dari Cloud Firestore...</p>
+            </div>
+            <p id="no-data-message" class="text-center text-gray-500 hidden mt-4">Belum ada transaksi. Silakan tambahkan satu!</p>
+        </div>
+        
+    </div>
+</div>
 
+<!-- Firebase SDK Imports (Module) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-                    html += `
-                        <div class="flex justify-between items-center p-3 rounded-lg border ${color} transition duration-150 ease-in-out hover:shadow-md" data-id="${transaction.id}">
-                            <div class="flex-grow">
-                                <p class="font-semibold text-gray-800">${transaction.description}</p>
-                                <p class="text-xs text-gray-500">${dateDisplay}</p>
-                            </div>
-                            <div class="text-right mr-4">
-                                <p class="font-bold ${color}">${sign} ${formatRupiah(Math.abs(transaction.amount))}</p>
-                            </div>
-                            <button onclick="window.confirmDelete('${transaction.id}')" class="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                        </div>
-                    `;
-                });
+    // --- Global Variables (Canvas Environment) ---
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let firebaseConfig = {};
+    try {
+        // PENTING: Mengambil konfigurasi Firebase dari variabel global
+        firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        if (Object.keys(firebaseConfig).length === 0) {
+             console.error("Kesalahan Konfigurasi: __firebase_config kosong atau tidak valid.");
+        }
+    } catch (e) {
+        console.error("Kesalahan Parsing Konfigurasi Firebase:", e);
+    }
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-                transactionsList.innerHTML = html;
-                balanceValue.textContent = formatRupiah(totalBalance);
-                balanceValue.classList.remove('text-blue-700', 'text-green-600', 'text-red-600');
-                balanceValue.classList.add(totalBalance >= 0 ? 'text-green-600' : 'text-red-600');
+    let app;
+    let db;
+    let auth;
+    let userId = null;
+    let isAuthReady = false;
 
-            }, (error) => {
-                console.error("Error fetching transactions:", error);
-                loadingData.classList.add('hidden');
-                transactionsList.innerHTML = `<p class="text-red-500 text-center">Gagal memuat data: ${error.message}. Cek log konsol untuk detail.</p>`;
-            });
+    // Elemen UI
+    const authStatusEl = document.getElementById('auth-status');
+    const userIdDisplayEl = document.getElementById('user-id-display');
+    const loadingMessageEl = document.getElementById('loading-message');
+    const noDataMessageEl = document.getElementById('no-data-message');
+    const totalIncomeEl = document.getElementById('total-income');
+    const totalExpenseEl = document.getElementById('total-expense');
+    const currentBalanceEl = document.getElementById('current-balance');
+    const transactionsListEl = document.getElementById('transactions-list');
+    const transactionForm = document.getElementById('transaction-form');
+    const typePemasukanBtn = document.getElementById('type-pemasukan');
+    const typePengeluaranBtn = document.getElementById('type-pengeluaran');
+    const transactionTypeInput = document.getElementById('transaction-type');
+    
+    // Set tanggal hari ini secara default
+    document.getElementById('date').valueAsDate = new Date();
+    
+    // --- Helper Functions ---
+    const formatRupiah = (number) => {
+        return 'Rp ' + number.toLocaleString('id-ID');
+    };
+
+    const getCollectionPath = (uid) => {
+        // Menggunakan jalur data PRIVATE yang aman dan sesuai dengan Aturan Keamanan.
+        return `artifacts/${appId}/users/${uid}/transactions`;
+    };
+
+    const handleTransactionTypeChange = (newType) => {
+        transactionTypeInput.value = newType;
+        if (newType === 'pemasukan') {
+            typePemasukanBtn.classList.remove('bg-gray-200', 'text-gray-700');
+            typePemasukanBtn.classList.add('bg-green-500', 'text-white');
+            typePengeluaranBtn.classList.remove('bg-red-500', 'text-white');
+            typePengeluaranBtn.classList.add('bg-gray-200', 'text-gray-700');
+        } else {
+            typePengeluaranBtn.classList.remove('bg-gray-200', 'text-gray-700');
+            typePengeluaranBtn.classList.add('bg-red-500', 'text-white');
+            typePemasukanBtn.classList.remove('bg-green-500', 'text-white');
+            typePemasukanBtn.classList.add('bg-gray-200', 'text-gray-700');
+        }
+    };
+
+    // --- Firebase Initialization and Auth ---
+    async function initializeFirebase() {
+        if (Object.keys(firebaseConfig).length === 0) {
+            authStatusEl.textContent = "Error: Konfigurasi Firebase Hilang/Gagal Diinisialisasi!";
+            authStatusEl.classList.remove('text-indigo-800');
+            authStatusEl.classList.add('text-red-800');
+            return;
         }
 
-        /**
-         * Melakukan proses otentikasi awal (Anonim) dan setup listener data.
-         */
-        onAuthStateChanged(auth, async (user) => {
-            const authStatus = document.getElementById('auth-status');
-            
-            if (user) {
-                // User sudah ada (sudah login anonim sebelumnya)
-                userId = user.uid;
-                isAuthReady = true;
-                authStatus.innerHTML = `<span class="text-green-600">Terhubung & Otentikasi Berhasil.</span> ID Pengguna: <span class="font-bold text-gray-800">${userId}</span>`;
-                setupDataListener();
+        try {
+            setLogLevel('debug'); // Untuk debugging di konsol
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
 
-            } else if (!isAuthReady) {
-                // Belum ada user, coba sign in Anonim
-                try {
-                    authStatus.innerHTML = `<span class="loading-ring inline-block mr-2 align-middle"></span> Melakukan sign in anonim...`;
-                    
-                    const credential = await signInAnonymously(auth);
-                    userId = credential.user.uid;
-
-                    isAuthReady = true;
-                    authStatus.innerHTML = `<span class="text-green-600">Sign In Berhasil.</span> ID Pengguna: <span class="font-bold text-gray-800">${userId}</span>`;
-                    setupDataListener();
-
-                } catch (error) {
-                    console.error("Gagal melakukan autentikasi:", error);
-                    isAuthReady = true;
-                    authStatus.innerHTML = `<span class="text-red-600">Gagal Otentikasi.</span> ${error.message}. Aplikasi tidak dapat menyimpan data.`;
-                    document.getElementById('add-transaction-btn').disabled = true;
-                }
+            // 1. Tanda tangani pengguna menggunakan token kustom atau anonim
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
             }
+
+            // 2. Dengarkan perubahan status otentikasi
+            onAuthStateChanged(auth, (user) => {
+                isAuthReady = true;
+                if (user) {
+                    userId = user.uid;
+                    authStatusEl.textContent = "Database AKTIF & AMAN.";
+                    userIdDisplayEl.textContent = `ID Pengguna: ${userId} | Jalur Data: artifacts/${appId}/users/${userId}/...`;
+                    authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
+                    authStatusEl.classList.add('text-green-800');
+                    
+                    // Setelah otentikasi berhasil, mulai mendengarkan data Firestore
+                    listenForTransactions();
+                } else {
+                    userId = null;
+                    authStatusEl.textContent = "Error: Otentikasi Gagal. Tidak ada pengguna yang masuk.";
+                    userIdDisplayEl.textContent = 'Silakan periksa konfigurasi dan Aturan Keamanan Firebase Anda.';
+                    authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
+                    authStatusEl.classList.add('text-red-800');
+                }
+            });
+
+        } catch (error) {
+            console.error("Gagal menginisialisasi Firebase atau Otentikasi:", error);
+            authStatusEl.textContent = `Error Otentikasi: ${error.code}. Periksa Konsol & Konfigurasi Firebase.`;
+            authStatusEl.classList.remove('text-indigo-800');
+            authStatusEl.classList.add('text-red-800');
+        }
+    }
+
+    // --- Firestore Data Listener ---
+    function listenForTransactions() {
+        if (!db || !userId) return; // Guard clause: Pastikan DB inisialisasi dan Auth OK
+
+        const transactionsRef = collection(db, getCollectionPath(userId));
+        const q = query(transactionsRef);
+
+        // onSnapshot menyediakan pembaruan real-time
+        onSnapshot(q, (snapshot) => {
+            const transactions = [];
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                transactions.push({ id: doc.id, ...data });
+
+                const amount = parseInt(data.amount);
+                if (data.type === 'pemasukan') {
+                    totalIncome += amount;
+                } else if (data.type === 'pengeluaran') {
+                    totalExpense += amount;
+                }
+            });
+
+            // Sortir transaksi berdasarkan tanggal (terbaru dulu)
+            // Lakukan sorting di client side karena orderBy di Firestore memerlukan index
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // Perbarui UI
+            updateDashboard(totalIncome, totalExpense);
+            renderTransactions(transactions);
+
+        }, (error) => {
+            console.error("Gagal mendengarkan transaksi:", error);
+            authStatusEl.textContent = "Error: Gagal Memuat Data. Cek Aturan Keamanan Firestore.";
+            authStatusEl.classList.remove('text-indigo-800', 'text-green-800');
+            authStatusEl.classList.add('text-red-800');
+        });
+    }
+
+    // --- UI Update Functions ---
+    function updateDashboard(income, expense) {
+        const balance = income - expense;
+        totalIncomeEl.textContent = formatRupiah(income);
+        totalExpenseEl.textContent = formatRupiah(expense);
+        currentBalanceEl.textContent = formatRupiah(balance);
+
+        currentBalanceEl.classList.remove('text-blue-700', 'text-red-700');
+        if (balance >= 0) {
+            currentBalanceEl.classList.add('text-blue-700');
+        } else {
+            currentBalanceEl.classList.add('text-red-700');
+        }
+    }
+
+    function renderTransactions(transactions) {
+        transactionsListEl.innerHTML = '';
+        loadingMessageEl.classList.add('hidden');
+
+        if (transactions.length === 0) {
+            noDataMessageEl.classList.remove('hidden');
+            return;
+        }
+
+        noDataMessageEl.classList.add('hidden');
+
+        transactions.forEach(t => {
+            const isIncome = t.type === 'pemasukan';
+            const color = isIncome ? 'border-green-400' : 'border-red-400';
+            const sign = isIncome ? '+' : '-';
+
+            const item = document.createElement('div');
+            item.className = `p-3 border-l-4 ${color} bg-gray-50 rounded-lg shadow-sm flex justify-between items-center transition duration-150 hover:bg-gray-100`;
+            item.innerHTML = `
+                <div>
+                    <p class="font-semibold text-gray-800">${t.description}</p>
+                    <p class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}">${sign} ${formatRupiah(parseInt(t.amount))}</p>
+                    <button data-id="${t.id}" class="delete-btn text-xs text-red-500 hover:text-red-700 mt-1">Hapus</button>
+                </div>
+            `;
+            transactionsListEl.appendChild(item);
         });
 
-        // ==========================================================
-        // FUNGSI INJEKSI DATA AWAL (SEED DATA)
-        // ==========================================================
+        // Attach delete listeners
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', handleDeleteTransaction);
+        });
+    }
 
-        const transactionData = [
-            // Saldo Awal 2 November: Rp 31.000 (Tidak dimasukkan sebagai transaksi karena sudah dihitung sebagai saldo awal di data lama)
+    // --- Event Handlers ---
+    typePemasukanBtn.addEventListener('click', () => handleTransactionTypeChange('pemasukan'));
+    typePengeluaranBtn.addEventListener('click', () => handleTransactionTypeChange('pengeluaran'));
 
-            // 2 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-02' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 3000, date: '2025-11-02' },
-            
-            // 3 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-11-03' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-03' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-11-03' },
-            { type: 'income', description: 'Rekber 4 (Fee)', amount: 5000, date: '2025-11-03' },
-            { type: 'income', description: 'Rekber 5 (Fee)', amount: 5000, date: '2025-11-03' },
+    transactionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            // 4 November
-            { type: 'expense', description: 'Belanja 3 Mie + Minuman', amount: 14900, date: '2025-11-04' },
-            { type: 'expense', description: 'Biaya admin pembelian', amount: 1539, date: '2025-11-04' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 3000, date: '2025-11-04' },
-            { type: 'income', description: 'Joki 3 Scenario', amount: 15000, date: '2025-11-04' },
-            
-            // 5 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-05' },
+        if (!userId) {
+            console.error('Aplikasi belum terotentikasi. Tidak dapat menyimpan data.');
+            // Anda dapat menambahkan pesan ke UI di sini jika diperlukan
+            return;
+        }
 
-            // 6 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 20000, date: '2025-11-06' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 3000, date: '2025-11-06' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-11-06' },
+        const amount = document.getElementById('amount').value;
+        const description = document.getElementById('description').value;
+        const date = document.getElementById('date').value; // Format YYYY-MM-DD
+        const type = transactionTypeInput.value;
 
-            // 7 November
-            { type: 'expense', description: 'Beli WDP x2', amount: 54600, date: '2025-11-07' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-11-07' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 25000, date: '2025-11-07' },
-            { type: 'expense', description: 'Beli Diamond 50+50', amount: 16376, date: '2025-11-07' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 3000, date: '2025-11-07' },
-            { type: 'income', description: 'Rekber 4 (Fee)', amount: 10000, date: '2025-11-07' },
+        if (!amount || !description || !date) return;
 
-            // 8 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 3000, date: '2025-11-08' },
-            { type: 'income', description: 'Joki 2 Uma', amount: 6000, date: '2025-11-08' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-08' },
-
-            // 9 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-09' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-09' },
-            { type: 'expense', description: 'Bantu teman', amount: 35000, date: '2025-11-09' },
-            { type: 'expense', description: 'Upgrade Cloud Phone', amount: 20023, date: '2025-11-09' },
-
-            // 10 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-10' },
-
-            // 11 November
-            { type: 'expense', description: 'Beli Mie', amount: 10100, date: '2025-11-11' },
-
-            // 12 November
-            { type: 'income', description: 'Joki 4 Uma', amount: 12000, date: '2025-11-12' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-12' },
-
-            // 13 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-13' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-13' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 10000, date: '2025-11-13' },
-
-            // 14 November - Tidak ada transaksi
-            
-            // 15 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-15' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-15' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-11-15' },
-            { type: 'expense', description: 'Beli Indomie', amount: 14300, date: '2025-11-15' },
-
-            // 16 & 17 November - Tidak ada transaksi
-            
-            // 18 November
-            { type: 'income', description: 'Tarik SociaBuzz', amount: 14150, date: '2025-11-18' },
-
-            // 19 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-19' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-19' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 11260, date: '2025-11-19' },
-
-            // 20 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-20' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-20' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-11-20' },
-            { type: 'income', description: 'Rekber 4 (Fee)', amount: 5000, date: '2025-11-20' },
-            { type: 'income', description: 'Rekber 5 (Fee)', amount: 5000, date: '2025-11-20' },
-            { type: 'expense', description: 'Cloud sehari', amount: 4773, date: '2025-11-20' },
-            { type: 'expense', description: 'Langganan Cloud sebulan', amount: 132090, date: '2025-11-20' },
-
-            // 21 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 15000, date: '2025-11-21' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 22780, date: '2025-11-21' },
-
-            // 22 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-11-22' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 10000, date: '2025-11-22' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 3000, date: '2025-11-22' },
-
-            // 23 November
-            { type: 'expense', description: 'WDP', amount: 28725, date: '2025-11-23' },
-
-            // 24 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-11-24' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 3000, date: '2025-11-24' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 10000, date: '2025-11-24' },
-            { type: 'expense', description: 'WDP 2 orang menang turnamen', amount: 56648, date: '2025-11-24' },
-
-            // 25 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 3000, date: '2025-11-25' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-11-25' },
-
-            // 26 November
-            { type: 'income', description: '10 Bulk Akun Google Fresh', amount: 8000, date: '2025-11-26' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 9100, date: '2025-11-26' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 32000, date: '2025-11-26' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 6000, date: '2025-11-26' },
-            { type: 'income', description: 'Rekber 4 (Fee)', amount: 5000, date: '2025-11-26' },
-
-            // 27 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-27' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 10000, date: '2025-11-27' },
-
-            // 28 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 3000, date: '2025-11-28' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 11933, date: '2025-11-28' }, // Sudah dikurangi biaya admin
-            
-            // 29 November
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-11-29' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 10000, date: '2025-11-29' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 15000, date: '2025-11-29' },
-            { type: 'income', description: 'Rekber 4 (Fee)', amount: 5000, date: '2025-11-29' },
-
-            // 30 November
-            { type: 'expense', description: 'Beli premium pass game', amount: 36630, date: '2025-11-30' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-11-30' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 10000, date: '2025-11-30' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-11-30' },
-            { type: 'expense', description: 'Hadiah pembukaan server (dikeluarkan)', amount: 8800, date: '2025-11-30' },
-
-            // 1 Desember
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 3000, date: '2025-12-01' },
-            { type: 'income', description: 'Joki 61 Uma', amount: 185000, date: '2025-12-01' },
-            { type: 'expense', description: 'Tarik uang tunai', amount: 50000, date: '2025-12-01' },
-
-            // 2 Desember
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-12-02' },
-            { type: 'expense', description: 'Token PLN 50K', amount: 48750, date: '2025-12-02' },
-            { type: 'income', description: 'Isi Ulang Saldo (dari luar)', amount: 50000, date: '2025-12-02' },
-            
-            // 3 Desember
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-12-03' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 5000, date: '2025-12-03' },
-            { type: 'income', description: 'Rekber 3 (Fee)', amount: 5000, date: '2025-12-03' },
-            
-            // 4 Desember
-            { type: 'income', description: 'Joki 7 Uma', amount: 21000, date: '2025-12-04' },
-
-            // 5 Desember
-            { type: 'expense', description: 'Beli Headset', amount: 132340, date: '2025-12-05' },
-
-            // 6 Desember
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-12-06' },
-
-            // 7 Desember - Tidak ada transaksi
-            
-            // 8 Desember
-            { type: 'expense', description: '66 Paid Jewels (Potongan Saldo Payment)', amount: 17951, date: '2025-12-08' },
-            { type: 'expense', description: 'Potongan Saldo Payment (Tambahan)', amount: 5000, date: '2025-12-08' },
-            { type: 'income', description: 'Rawat akun 2 Minggu', amount: 50000, date: '2025-12-08' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-12-08' },
-
-            // 9 Desember
-            { type: 'expense', description: 'Perpanjang cloud phone', amount: 132090, date: '2025-12-09' },
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 5000, date: '2025-12-09' },
-            { type: 'income', description: 'Rekber 2 (Fee)', amount: 3000, date: '2025-12-09' },
-            { type: 'expense', description: 'Beli PLN 50.000 (Potongan Saldo)', amount: 45000, date: '2025-12-09' },
-            { type: 'income', description: 'Isi ulang Saldo (dari luar)', amount: 50000, date: '2025-12-09' },
-
-            // 10 Desember
-            { type: 'income', description: 'Rekber 1 (Fee)', amount: 10000, date: '2025-12-10' },
-
-            // Saldo Awal 2 November 31rb dihitung sebagai Pemasukan pertama
-            { type: 'income', description: 'Saldo Awal 2 November', amount: 31000, date: '2025-11-02' },
-        ];
-
-
-        async function seedInitialData() {
-            if (!userId) {
-                console.error('Error: Otentikasi belum selesai untuk injeksi data awal.');
-                return;
-            }
-
-            const transactionsRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-            const snapshot = await getDocs(transactionsRef);
-
-            // Cek apakah koleksi kosong (snapshot.empty)
-            if (!snapshot.empty) {
-                console.log("Data awal sudah ada. Proses injeksi dilewati.");
-                return;
-            }
-
-            document.getElementById('loading-data').innerHTML = 'Mengisi data transaksi historis...';
-
-            console.log(`Memulai injeksi ${transactionData.length} data transaksi awal...`);
-            
-            const batchPromises = transactionData.map(data => {
-                const timestamp = new Date(data.date);
-                // Menambahkan data
-                return addDoc(transactionsRef, {
-                    type: data.type,
-                    description: data.description,
-                    amount: data.amount,
-                    timestamp: timestamp
-                });
+        try {
+            const transactionsRef = collection(db, getCollectionPath(userId));
+            await addDoc(transactionsRef, {
+                amount: amount,
+                description: description,
+                date: date,
+                type: type,
+                createdAt: new Date().toISOString()
             });
 
-            try {
-                await Promise.all(batchPromises);
-                console.log("Injeksi data awal selesai. Data akan dimuat.");
-                document.getElementById('loading-data').innerHTML = 'Memuat data keuangan...';
-                // onSnapshot akan otomatis mengambil data baru
-            } catch (error) {
-                console.error("Gagal menginjeksi data awal:", error);
-                window.confirmDelete(null, "Kesalahan Fatal!", `Gagal menginjeksi data awal ke Firestore: ${error.message}. Cek log konsol.`);
-            }
-        }
-
-
-        // ==========================================================
-        // FUNGSI GLOBAL TRANSAKSI & MODAL (Sama seperti sebelumnya)
-        // ==========================================================
-
-        window.addTransaction = async function() {
-            if (!userId) {
-                window.confirmDelete(null, "Kesalahan Otentikasi", "Silakan refresh halaman untuk mencoba autentikasi ulang.");
-                return;
-            }
-
-            const type = document.getElementById('type').value;
-            const description = document.getElementById('description').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
-            const btn = document.getElementById('add-transaction-btn');
-            const btnText = document.getElementById('btn-text');
-
-            if (!description || isNaN(amount) || amount <= 0) {
-                window.confirmDelete(null, "Kesalahan Input", "Harap isi deskripsi dan jumlah yang valid (> 0).");
-                return;
-            }
-
-            btn.disabled = true;
-            btnText.textContent = "Menyimpan...";
-
-            try {
-                const transactionsRef = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                
-                await addDoc(transactionsRef, {
-                    type: type,
-                    description: description,
-                    amount: amount,
-                    timestamp: new Date() // Gunakan waktu saat ini
-                });
-
-                document.getElementById('description').value = '';
-                document.getElementById('amount').value = '';
-            } catch (error) {
-                console.error("Error menambahkan dokumen:", error);
-                window.confirmDelete(null, "Gagal Menyimpan!", `Transaksi gagal ditambahkan. Pesan error: ${error.message}.`);
-            } finally {
-                btn.disabled = false;
-                btnText.textContent = "Tambah Transaksi";
-            }
-        }
-
-        let transactionToDeleteId = null;
-
-        window.confirmDelete = function(id, title = 'Konfirmasi Hapus', message = 'Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini permanen.') {
-            transactionToDeleteId = id;
-            const modal = document.getElementById('custom-modal');
-            const confirmBtn = document.getElementById('modal-confirm-btn');
+            // Reset form setelah berhasil
+            transactionForm.reset();
+            document.getElementById('date').valueAsDate = new Date(); // Reset tanggal
+            handleTransactionTypeChange('pemasukan'); // Reset tipe
             
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').textContent = message;
-
-            document.getElementById('modal-title').classList.remove('text-red-600', 'text-blue-600');
-            if (id) {
-                // Mode Konfirmasi Hapus
-                document.getElementById('modal-title').classList.add('text-red-600');
-                confirmBtn.classList.remove('hidden', 'bg-blue-600');
-                confirmBtn.classList.add('bg-red-600');
-                confirmBtn.textContent = "Hapus";
-                confirmBtn.onclick = () => { deleteTransaction(); };
-            } else {
-                // Mode Pesan Kesalahan (id=null)
-                document.getElementById('modal-title').classList.add('text-blue-600');
-                document.getElementById('modal-title').textContent = title;
-                confirmBtn.classList.remove('bg-red-600');
-                confirmBtn.classList.add('bg-blue-600');
-                confirmBtn.textContent = "OK";
-                confirmBtn.onclick = () => { window.closeModal(); };
-            }
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        } catch (error) {
+            console.error("Gagal menambahkan transaksi:", error);
+            // Ganti alert dengan logging atau notifikasi UI yang tidak mengganggu
         }
+    });
 
-        window.closeModal = function() {
-            document.getElementById('custom-modal').classList.remove('flex');
-            document.getElementById('custom-modal').classList.add('hidden');
-            transactionToDeleteId = null;
+    async function handleDeleteTransaction(e) {
+        const transactionId = e.target.dataset.id;
+        
+        // Dalam lingkungan ini, ganti alert/confirm dengan konsol log atau UI kustom
+        if (!window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+            return;
         }
         
-        async function deleteTransaction() {
-            if (!transactionToDeleteId || !userId) return;
-
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', transactionToDeleteId);
-                await deleteDoc(docRef);
-                window.closeModal();
-            } catch (error) {
-                console.error("Error menghapus dokumen:", error);
-                window.closeModal();
-                window.confirmDelete(null, "Gagal Menghapus!", "Transaksi gagal dihapus. Cek log konsol untuk detail.");
-            }
+        try {
+            const transactionDocRef = doc(db, getCollectionPath(userId), transactionId);
+            await deleteDoc(transactionDocRef);
+        } catch (error) {
+            console.error("Gagal menghapus transaksi:", error);
         }
-        
-        // Expose functions globally for HTML event handlers
-        window.deleteTransaction = deleteTransaction;
-        window.formatRupiah = formatRupiah;
-        
-    </script>
+    }
+
+
+    // --- Start Application ---
+    initializeFirebase();
+
+</script>
 </body>
 </html>
 
