@@ -21,13 +21,11 @@
         <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Catatan Keuangan Pribadi</h1>
 
         <!-- Status & Notifikasi -->
-        <!-- *** MODIFIKASI: Dibuat lebih besar dan detail *** -->
         <div id="status-card" class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl shadow-md mb-6">
             <p id="auth-status" class="font-bold text-center text-md">Memuat status otentikasi...</p>
             <p id="user-id-display" class="text-xs text-center mt-2 break-all"></p> 
             <p class="text-xs text-center mt-1 text-gray-500">Gunakan ID di atas untuk melihat data di Firebase Console.</p>
         </div>
-        <!-- *** AKHIR MODIFIKASI *** -->
 
         <!-- Dashboard Saldo -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
@@ -92,12 +90,13 @@
 
 <!-- Firebase SDK Imports (Module) -->
 <script type="module">
+    // Mengimpor modul Firebase yang diperlukan dari CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 1. HARDCODED FIREBASE CONFIGURATION (Fixes Vercel Env Issue) ---
-    // Konfigurasi ini diambil langsung dari detail proyek Firebase Anda.
+    // --- 1. HARDCODED FIREBASE CONFIGURATION (Wajib untuk GitHub Pages) ---
+    // Konfigurasi ini diambil dari detail proyek Firebase Anda ('keuangan-vercel').
     const firebaseConfig = {
         apiKey: "AIzaSyBWGcB71XutjePkzHM6NUMhuIeoUhk4S8I",
         authDomain: "keuangan-vercel.firebaseapp.com",
@@ -108,9 +107,10 @@
         measurementId: "G-YH4KXP51KL"
     };
 
-    // --- 2. ENVIRONMENT VARIABLES (For Path Construction/Canvas Compatibility) ---
+    // --- 2. ENVIRONMENT VARIABLES (Untuk Kompatibilitas Canvas/Jalur Data) ---
+    // Menggunakan 'default-app-id' karena aplikasi ini berdiri sendiri
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    // Gunakan variabel ini karena Vercel/GitHub menyediakan token otentikasi kustom
+    // Menggunakan token otentikasi kustom jika tersedia
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     let app;
@@ -151,13 +151,14 @@
 
     const handleTransactionTypeChange = (newType) => {
         transactionTypeInput.value = newType;
+        // Logic untuk mengubah warna tombol berdasarkan tipe yang dipilih
         if (newType === 'pemasukan') {
             typePemasukanBtn.classList.remove('bg-gray-200', 'text-gray-700');
             typePemasukanBtn.classList.add('bg-green-500', 'text-white');
             typePengeluaranBtn.classList.remove('bg-red-500', 'text-white');
             typePengeluaranBtn.classList.add('bg-gray-200', 'text-gray-700');
-        } else {
-            typePengeluaranBtn.classList.remove('bg-red-500', 'text-white');
+        } else { // pengeluaran
+            typePengeluaranBtn.classList.remove('bg-gray-200', 'text-gray-700');
             typePengeluaranBtn.classList.add('bg-red-500', 'text-white');
             typePemasukanBtn.classList.remove('bg-green-500', 'text-white');
             typePemasukanBtn.classList.add('bg-gray-200', 'text-gray-700');
@@ -166,6 +167,7 @@
 
     // --- Firebase Initialization and Auth ---
     async function initializeFirebase() {
+        // Cek apakah konfigurasi API Key ada
         if (!firebaseConfig.apiKey) {
             authStatusEl.textContent = "Error: Konfigurasi Firebase Hilang/Gagal Diinisialisasi!";
             authStatusEl.classList.remove('text-indigo-800');
@@ -180,6 +182,7 @@
             auth = getAuth(app);
 
             // 1. Tanda tangani pengguna menggunakan token kustom atau anonim
+            // Ini akan membuat UID unik untuk pengguna (Anda)
             if (initialAuthToken) {
                 await signInWithCustomToken(auth, initialAuthToken);
             } else {
@@ -191,6 +194,7 @@
                 if (user) {
                     userId = user.uid;
                     authStatusEl.textContent = "Database AKTIF & AMAN.";
+                    // UID ditampilkan di sini
                     userIdDisplayEl.textContent = `ID Pengguna (UID): ${userId}`;
                     authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
                     authStatusEl.classList.add('text-green-800');
@@ -208,12 +212,13 @@
 
         } catch (error) {
             console.error("Gagal menginisialisasi Firebase atau Otentikasi:", error);
-            // Tambahkan penanganan khusus untuk error konfigurasi auth
+            // Penanganan khusus untuk error konfigurasi
             if (error.code === 'auth/configuration-not-found') {
                 authStatusEl.textContent = "Error Otentikasi: auth/configuration-not-found. Periksa Kunci API/Konfigurasi Firebase.";
             } else {
                 authStatusEl.textContent = `Error Otentikasi: ${error.code}. Periksa Konsol & Konfigurasi Firebase.`;
             }
+            userIdDisplayEl.textContent = 'Status: Koneksi Gagal';
             authStatusEl.classList.remove('text-indigo-800');
             authStatusEl.classList.add('text-red-800');
         }
@@ -223,8 +228,8 @@
     function listenForTransactions() {
         if (!db || !userId) return; 
 
+        // Collection Path: artifacts/default-app-id/users/{UID_ANDA}/transactions
         const transactionsRef = collection(db, getCollectionPath(userId));
-        // Tanpa orderBy, kita akan sorting di sisi client
         const q = query(transactionsRef);
 
         // onSnapshot menyediakan pembaruan real-time
@@ -354,6 +359,7 @@
             
         } catch (error) {
             console.error("Gagal menambahkan transaksi:", error);
+            // Anda dapat menambahkan pesan error UI di sini
         }
     });
 
