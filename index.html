@@ -93,7 +93,7 @@
     // Mengimpor modul Firebase yang diperlukan dari CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, onSnapshot, query, setLogLevel, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, addDoc, onSnapshot, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -105,9 +105,6 @@
         appId: "1:314524581902:web:2fec2d7c086cb739db3c5f",
         measurementId: "G-YH4KXP51KL"
     };
-
-    // Variabel aplikasi
-    const appId = 'keuangan-app';
     
     let app;
     let db;
@@ -129,25 +126,19 @@
     const transactionTypeInput = document.getElementById('transaction-type');
     
     // Set tanggal hari ini secara default
-    document.getElementById('date').valueAsDate = new Date();
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+    document.getElementById('date').value = formattedDate;
     
     // --- Helper Functions ---
     const formatRupiah = (number) => {
-        // Menggunakan Math.abs untuk memastikan format rupiah tidak memiliki tanda minus
         const absoluteNumber = Math.abs(number);
-        // Memformat angka dengan pemisah ribuan Indonesia
         const formatted = absoluteNumber.toLocaleString('id-ID'); 
         return 'Rp ' + formatted;
     };
 
-    const getCollectionPath = (uid) => {
-        // Path yang lebih sederhana
-        return `users/${uid}/transactions`;
-    };
-
     const handleTransactionTypeChange = (newType) => {
         transactionTypeInput.value = newType;
-        // Logic untuk mengubah warna tombol berdasarkan tipe yang dipilih
         if (newType === 'pemasukan') {
             typePemasukanBtn.classList.remove('bg-gray-200', 'text-gray-700');
             typePemasukanBtn.classList.add('bg-green-500', 'text-white');
@@ -163,30 +154,26 @@
 
     // --- Firebase Initialization and Auth ---
     async function initializeFirebase() {
-        // Cek apakah konfigurasi API Key ada
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-            authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Lengkap!";
-            authStatusEl.classList.remove('text-indigo-800');
-            authStatusEl.classList.add('text-red-800');
-            return;
-        }
-
         try {
-            // Inisialisasi Firebase
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-
-            // Status inisialisasi
+            console.log('Menginisialisasi Firebase dengan config:', firebaseConfig);
             authStatusEl.textContent = "Menginisialisasi Firebase...";
             
+            // Inisialisasi Firebase
+            app = initializeApp(firebaseConfig);
+            console.log('Firebase app berhasil diinisialisasi:', app);
+            
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
             // Login anonim
+            console.log('Mencoba login anonim...');
             await signInAnonymously(auth);
-
+            
             // Dengarkan perubahan status otentikasi
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     userId = user.uid;
+                    console.log('Pengguna anonim berhasil login. UID:', userId);
                     authStatusEl.textContent = "Database AKTIF & AMAN.";
                     userIdDisplayEl.textContent = `ID Pengguna (UID): ${userId}`;
                     authStatusEl.classList.remove('text-red-800', 'text-indigo-800');
@@ -196,13 +183,14 @@
                     listenForTransactions();
                 } else {
                     userId = null;
+                    console.log('Tidak ada pengguna yang login.');
                     authStatusEl.textContent = "Error: Otentikasi Gagal.";
                     userIdDisplayEl.textContent = 'Tidak ada pengguna yang masuk.';
                     authStatusEl.classList.remove('text-green-800', 'text-indigo-800');
                     authStatusEl.classList.add('text-red-800');
                 }
             }, (error) => {
-                console.error("Error auth state change:", error);
+                console.error("Error dalam onAuthStateChanged:", error);
                 authStatusEl.textContent = `Error Otentikasi: ${error.message}`;
                 authStatusEl.classList.add('text-red-800');
             });
@@ -211,11 +199,13 @@
             console.error("Gagal menginisialisasi Firebase:", error);
             
             if (error.code === 'auth/configuration-not-found') {
-                authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Ditemukan. Periksa kunci API.";
+                authStatusEl.textContent = "Error: Konfigurasi Firebase Tidak Ditemukan. Periksa kunci API dan konfigurasi.";
             } else if (error.code === 'auth/invalid-api-key') {
                 authStatusEl.textContent = "Error: API Key Firebase Tidak Valid.";
+            } else if (error.code === 'app/duplicate-app') {
+                authStatusEl.textContent = "Error: Aplikasi Firebase sudah diinisialisasi.";
             } else {
-                authStatusEl.textContent = `Error: ${error.code} - ${error.message}`;
+                authStatusEl.textContent = `Error: ${error.code || 'Tidak diketahui'} - ${error.message}`;
             }
             
             authStatusEl.classList.remove('text-indigo-800');
@@ -231,11 +221,15 @@
         } 
 
         try {
-            const transactionsRef = collection(db, getCollectionPath(userId));
+            console.log('Mendengarkan transaksi untuk user:', userId);
+            
+            // Menggunakan path yang lebih sederhana
+            const transactionsRef = collection(db, `transactions_${userId}`);
             const q = query(transactionsRef);
 
             // onSnapshot menyediakan pembaruan real-time
             onSnapshot(q, (snapshot) => {
+                console.log('Data transaksi diterima:', snapshot.size, 'item');
                 const transactions = [];
                 let totalIncome = 0;
                 let totalExpense = 0;
@@ -354,7 +348,7 @@
         }
 
         try {
-            const transactionsRef = collection(db, getCollectionPath(userId));
+            const transactionsRef = collection(db, `transactions_${userId}`);
             await addDoc(transactionsRef, {
                 amount: Number(amount),
                 description: description,
@@ -365,7 +359,7 @@
 
             // Reset form setelah berhasil
             transactionForm.reset();
-            document.getElementById('date').valueAsDate = new Date(); // Reset tanggal
+            document.getElementById('date').value = formattedDate; // Reset tanggal ke hari ini
             handleTransactionTypeChange('pemasukan'); // Reset tipe
             
         } catch (error) {
@@ -382,7 +376,7 @@
         }
         
         try {
-            const transactionDocRef = doc(db, getCollectionPath(userId), transactionId);
+            const transactionDocRef = doc(db, `transactions_${userId}`, transactionId);
             await deleteDoc(transactionDocRef);
         } catch (error) {
             console.error("Gagal menghapus transaksi:", error);
