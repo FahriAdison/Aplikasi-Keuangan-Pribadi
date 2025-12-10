@@ -17,7 +17,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React dan ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- FIREBASE CLASSIC IMPORTS (UMD) - VERSI PALING STABIL UNTUK LINGKUNGAN INI -->
+    <!-- Ini menggantikan script type="module" sebelumnya -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     
     <style>
         body { 
@@ -30,27 +37,18 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
-
-    <!-- FIREBASE IMPORTS DAN INITIALIZATION HELPER -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            onSnapshot, 
-            addDoc, 
-            deleteDoc, 
-            doc,
-            setLogLevel
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    <script type="text/babel">
+        // Menggunakan nama global dari UMD script
+        const { useState, useMemo, useEffect, useCallback } = React;
+        const { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = firebase.auth;
+        const { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, setLogLevel } = firebase.firestore;
         
         // Atur level log untuk debugging (akan tampil di Console browser)
-        setLogLevel('Debug');
-        
-        // Variabel global yang disediakan oleh environment (didefinisikan ulang untuk keamanan)
+        // setLogLevel('Debug'); // Dihapus karena UMD version 8 tidak mendukung setLogLevel langsung
+
+        // --- Variabel Global Canvas Environment (Dipastikan Aman) ---
         const getGlobalVar = (name, defaultValue) => typeof window[name] !== 'undefined' ? window[name] : defaultValue;
-        
         const appId = getGlobalVar('__app_id', 'default-app-id');
         const initialAuthToken = getGlobalVar('__initial_auth_token', null);
         let firebaseConfig = null;
@@ -60,75 +58,37 @@
                 firebaseConfig = JSON.parse(configString);
             }
         } catch (e) {
-            console.error("Failed to parse firebase config:", e);
+            console.error("Gagal memproses konfigurasi Firebase:", e);
         }
 
-
-        // Fungsi Otentikasi dan Listener Utama
-        const authenticateAndListen = (callback, handleError) => {
-            if (!firebaseConfig) {
-                handleError("Firebase configuration is missing or invalid.");
-                return;
-            }
-
-            let app, auth, db;
-            try {
-                // Inisialisasi Firebase
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-            } catch(e) {
-                handleError(`Firebase Initialization failed: ${e.message}`);
-                return;
-            }
-
-            // 1. Coba otentikasi
-            const signIn = async () => {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.warn("Custom/Anonymous Sign-in failed (continuing to observe auth state):", error);
-                    // Tidak memanggil handleError di sini, biarkan onAuthStateChanged yang menangani
-                }
-            };
-
-            signIn();
-
-            // 2. Dengarkan perubahan status otentikasi
-            const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-                const userId = user?.uid || null;
-                // Panggil callback setelah otentikasi siap
-                callback(db, userId, appId);
-            });
-            
-            // Return cleanup function for external use if needed
-            return unsubscribeAuth;
-        };
-
-        // Memasang fungsi otentikasi ke window agar dapat dipanggil oleh React
-        window.authenticateAndListen = authenticateAndListen;
-    </script>
-    
-    <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
-
-        // --- Konstanta & Data Awal (Hardcoded) ---
+        // --- Konstanta & Data Awal ---
         const HARDCODED_DATA = [
             { id: 'h1', date: '2024-11-02', desc: 'Saldo Awal', category: 'Saldo', amount: 31000, type: 'balance' },
-            { id: 'h2', date: '2024-11-02', desc: 'Profit Rekber 1', category: 'Rekber', amount: 5000, type: 'income' },
-            { id: 'h3', date: '2024-11-02', desc: 'Profit Rekber 2', category: 'Rekber', amount: 3000, type: 'income' },
-            // ... (lanjutan data hardcoded lainnya untuk riwayat awal - dipersingkat)
-            { id: 'h64', date: '2024-12-10', desc: 'Profit Rekber 1', category: 'Rekber', amount: 10000, type: 'income' },
+            { id: 'h2', date: '2024-11-02', desc: 'Profit Rekber', category: 'Rekber', amount: 5000, type: 'income' },
+            { id: 'h3', date: '2024-11-02', desc: 'Profit Rekber', category: 'Rekber', amount: 3000, type: 'income' },
+            { id: 'h64', date: '2024-12-10', desc: 'Profit Rekber', category: 'Rekber', amount: 10000, type: 'income' },
         ];
         
         const CATEGORY_COLORS = [
             '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', 
             '#3b82f6', '#8b5cf6', '#d946ef', '#f472b6', '#64748b'
         ];
+        
+        // --- Utility Functions ---
+        const formatRupiah = (number) => {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+            }).format(number);
+        };
+        
+        const formatDate = (dateString, options = { day: 'numeric', month: 'short' }) => {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return ''; 
+            return date.toLocaleDateString('id-ID', options);
+        };
+
 
         // --- Ikon Sederhana (SVG) ---
         const IconWallet = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>;
@@ -142,10 +102,10 @@
         const IconLoading = () => <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>;
 
         
-        // --- Komponen Modal Konfirmasi Hapus (Sama seperti sebelumnya) ---
-        const DeleteModal = ({ transaction, onConfirm, onClose, formatRupiah }) => {
+        // --- Komponen Modal Konfirmasi Hapus ---
+        const DeleteModal = ({ transaction, onConfirm, onClose }) => {
             if (!transaction) return null;
-            // ... (Modal implementation)
+
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
                     <div 
@@ -182,7 +142,7 @@
             );
         };
         
-        // --- Komponen Grafik Donut (Sama seperti sebelumnya) ---
+        // --- Komponen Grafik Donut ---
         const CategoryChart = ({ stats, totalExpense }) => {
             if (totalExpense === 0) {
                 return <p className="text-center text-slate-500 py-4">Belum ada data pengeluaran untuk ditampilkan.</p>;
@@ -244,8 +204,8 @@
         };
 
         
-        // --- Komponen Input Form (Sama seperti sebelumnya) ---
-        const InputForm = ({ onAddTransaction, formatRupiah }) => {
+        // --- Komponen Input Form ---
+        const InputForm = ({ onAddTransaction }) => {
             const today = new Date().toISOString().split('T')[0];
             const [input, setInput] = useState({
                 date: today,
@@ -280,6 +240,8 @@
                     category: input.category,
                     amount: amountValue,
                     type: input.type,
+                    // Tambahkan timestamp saat ini untuk sorting
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
                 try {
@@ -294,7 +256,7 @@
                     });
                 } catch (error) {
                     console.error("Gagal menambahkan transaksi:", error);
-                    setMessage('Gagal menambahkan transaksi. Koneksi Cloud bermasalah.');
+                    setMessage('Gagal menambahkan transaksi. Koneksi Cloud bermasalah. Cek console.');
                 }
                 
                 setIsLoading(false);
@@ -391,59 +353,89 @@
 
 
         const FinancialApp = () => {
-            const [firebaseContext, setFirebaseContext] = useState({ db: null, userId: null, appId: null, isAuthReady: false });
+            const [db, setDb] = useState(null);
+            const [userId, setUserId] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
             const [transactions, setTransactions] = useState(HARDCODED_DATA);
             const [filter, setFilter] = useState('all');
             const [deleteCandidate, setDeleteCandidate] = useState(null); 
             const [isLoadingData, setIsLoadingData] = useState(true);
-            const [error, setError] = useState(null); // State untuk menyimpan error
+            const [error, setError] = useState(null); 
 
             // 1. Inisialisasi Firebase dan Otentikasi
             useEffect(() => {
-                if (window.authenticateAndListen) {
-                    window.authenticateAndListen((dbInstance, userId, appId) => {
-                        setFirebaseContext({ 
-                            db: dbInstance, 
-                            userId, 
-                            appId, 
-                            isAuthReady: true 
-                        });
-                        setError(null); // Hapus error jika otentikasi berhasil
-                    }, (err) => {
-                         // Tangani error inisialisasi di module script
-                        setError(err);
-                        setFirebaseContext(prev => ({ ...prev, isAuthReady: true })); // Tetap set ready agar rendering dimulai
-                        setIsLoadingData(false);
-                    });
-                } else {
-                    // Fallback jika module script gagal dimuat
-                    setError("ERROR: Firebase loader script is missing.");
-                    setFirebaseContext(prev => ({ ...prev, isAuthReady: true }));
-                    setIsLoadingData(false);
-                }
-            }, []);
-
-            // 2. Listener Firestore (Menggantikan Local Storage)
-            useEffect(() => {
-                const { db, userId, appId, isAuthReady } = firebaseContext;
-
-                if (!isAuthReady) return; // Tunggu auth siap
-                if (error) return; // Jangan coba connect jika ada error inisialisasi
-
-                setIsLoadingData(true);
-
-                if (!db || !userId) {
-                    // Jika isAuthReady true tapi db/userId null (misal ada masalah auth tapi tidak fatal)
-                    // Kita hanya akan menampilkan data hardcoded saja.
-                    setTransactions(HARDCODED_DATA);
+                if (!firebaseConfig) {
+                    setError("Konfigurasi Firebase hilang. Tidak dapat terhubung ke Cloud.");
+                    setIsAuthReady(true);
                     setIsLoadingData(false);
                     return;
                 }
+
+                let app, auth, firestore;
+                try {
+                    // 1. Inisialisasi Aplikasi
+                    app = firebase.initializeApp(firebaseConfig);
+                    // 2. Dapatkan Services
+                    auth = firebase.auth();
+                    firestore = firebase.firestore();
+                    
+                    setDb(firestore);
+
+                    // 3. Otentikasi
+                    const signIn = async () => {
+                        try {
+                            if (initialAuthToken) {
+                                await auth.signInWithCustomToken(initialAuthToken);
+                            } else {
+                                await auth.signInAnonymously();
+                            }
+                        } catch (e) {
+                            console.error("Gagal Sign-in Custom/Anonim:", e);
+                        }
+                    };
+
+                    signIn();
+
+                    // 4. Listener Perubahan Otentikasi
+                    const unsubscribeAuth = auth.onAuthStateChanged(user => {
+                        const currentUserId = user?.uid || null;
+                        setUserId(currentUserId);
+                        setIsAuthReady(true);
+                        setError(null);
+                        // Data loading akan dimulai di useEffect terpisah setelah isAuthReady
+                    });
+                    
+                    return () => unsubscribeAuth();
+                    
+                } catch(e) {
+                    // Tangani error inisialisasi Firebase (misalnya, config error)
+                    setError(`Error Inisialisasi Firebase: ${e.message}`);
+                    setIsAuthReady(true);
+                    setIsLoadingData(false);
+                }
+
+            }, []);
+
+
+            // 2. Listener Firestore untuk Data Realtime
+            useEffect(() => {
+                if (!isAuthReady || !db || !userId) {
+                    if (isAuthReady) {
+                        // Jika Auth Ready tapi db atau userId null (mode GUEST atau error)
+                        setTransactions(HARDCODED_DATA);
+                        setIsLoadingData(false);
+                    }
+                    return;
+                }
+
+                setIsLoadingData(true);
                 
                 // PATH COLLECTION: /artifacts/{appId}/users/{userId}/transactions
-                const trxCollectionRef = window.collection(db, 'artifacts', appId, 'users', userId, 'transactions');
+                // Menggunakan fungsi getFirestore() untuk kompatibilitas yang lebih baik
+                const trxCollectionRef = db.collection('artifacts').doc(appId).collection('users').doc(userId).collection('transactions');
                 
-                const unsubscribe = window.onSnapshot(trxCollectionRef, (snapshot) => {
+                // Mengambil data dan mengurutkannya secara lokal (karena orderBy rawan butuh index)
+                const unsubscribe = trxCollectionRef.onSnapshot((snapshot) => {
                     const cloudTransactions = snapshot.docs.map(doc => ({
                         id: doc.id,
                         ...doc.data()
@@ -453,65 +445,74 @@
                         ...HARDCODED_DATA, 
                         ...cloudTransactions.map(t => ({
                             ...t,
+                            // Pastikan amount adalah number
                             amount: Number(t.amount)
                         }))
-                    ];
+                    ].sort((a, b) => {
+                         // Urutkan secara lokal berdasarkan tanggal, terbaru di atas
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        if (dateA > dateB) return -1;
+                        if (dateA < dateB) return 1;
+                        // Jika tanggal sama, gunakan ID untuk stabilitas (tidak ada timestamp di V8)
+                        return a.id.localeCompare(b.id);
+                    });
+
 
                     setTransactions(combinedTransactions);
                     setIsLoadingData(false);
                 }, (firestoreError) => {
-                    console.error("Error listening to Firestore (Data Load Failed):", firestoreError);
-                    setError("Gagal memuat data dari Cloud. Pastikan koneksi internet Anda stabil.");
+                    console.error("Gagal mendengarkan Firestore (Data Load Failed):", firestoreError);
+                    setError("Gagal memuat data dari Cloud. Harap periksa koneksi internet.");
                     setIsLoadingData(false);
                 });
 
                 return () => unsubscribe();
-            }, [firebaseContext.isAuthReady, firebaseContext.userId, firebaseContext.appId, error]);
+            }, [isAuthReady, db, userId]);
 
 
             // --- Fungsi CRUD Firestore ---
 
-            const addTransaction = async (newTrx) => {
-                const { db, userId, appId } = firebaseContext;
+            const addTransaction = useCallback(async (newTrx) => {
                 if (!db || !userId) {
-                    console.error("Database or User ID is not available.");
+                    console.error("Database atau User ID tidak tersedia untuk menambahkan transaksi.");
                     throw new Error("Koneksi Cloud gagal.");
                 }
                 
-                const trxCollectionRef = window.collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                await window.addDoc(trxCollectionRef, newTrx);
-            };
+                const trxCollectionRef = db.collection('artifacts').doc(appId).collection('users').doc(userId).collection('transactions');
+                await trxCollectionRef.add(newTrx);
+            }, [db, userId]);
 
-            const deleteTransaction = async (idToDelete) => {
-                const { db, userId, appId } = firebaseContext;
+            const deleteTransaction = useCallback(async (idToDelete) => {
                 if (!db || !userId) {
-                    console.error("Database or User ID is not available.");
+                    console.error("Database atau User ID tidak tersedia untuk menghapus transaksi.");
                     return;
                 }
 
                 try {
-                    const docRef = window.doc(db, 'artifacts', appId, 'users', userId, 'transactions', idToDelete);
-                    await window.deleteDoc(docRef);
+                    const docRef = db.collection('artifacts').doc(appId).collection('users').doc(userId).collection('transactions').doc(idToDelete);
+                    await docRef.delete();
                     setDeleteCandidate(null);
                 } catch (error) {
                     console.error("Gagal menghapus dokumen:", error);
                 }
-            };
+            }, [db, userId]);
             
             // --- Logika Perhitungan (sama seperti sebelumnya) ---
 
             const summary = useMemo(() => {
-                // ... (Calculation logic)
                 let totalIncome = 0;
                 let totalExpense = 0;
+                // Asumsi saldo awal selalu ada di index 0 dari HARDCODED_DATA
                 let initialBalance = HARDCODED_DATA[0].amount;
                 
                 const transactionsWithoutInitial = transactions.filter(item => item.type !== 'balance');
                 
                 transactionsWithoutInitial.forEach(t => {
-                    if (t.type === 'income' || t.category === 'Topup Saldo' || t.category === 'Lainnya Pemasukan') {
+                    // Masukkan transaksi dengan type 'income' DAN Saldo Awal sebagai Pemasukan
+                    if (t.type === 'income') {
                         totalIncome += Number(t.amount);
-                    } else {
+                    } else if (t.type === 'expense') {
                         totalExpense += Number(t.amount);
                     }
                 });
@@ -520,21 +521,7 @@
 
                 return { totalIncome, totalExpense, currentBalance, initialBalance };
             }, [transactions]);
-
-            const formatRupiah = (number) => {
-                return new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR',
-                    minimumFractionDigits: 0,
-                }).format(number);
-            };
             
-            const formatDate = (dateString, options = { day: 'numeric', month: 'short' }) => {
-                const date = new Date(dateString);
-                if (isNaN(date.getTime())) return ''; 
-                return date.toLocaleDateString('id-ID', options);
-            };
-
             const dateRange = useMemo(() => {
                 const validDates = transactions.map(t => new Date(t.date)).filter(d => !isNaN(d.getTime()));
                 const minDate = validDates.length > 0 ? new Date(Math.min(...validDates)) : new Date();
@@ -548,11 +535,10 @@
 
 
             const filteredData = useMemo(() => {
-                const sortedData = transactions.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                if (filter === 'all') return sortedData;
-                return sortedData.filter(item => 
-                    item.type === filter || (filter === 'income' && (item.category === 'Topup Saldo' || item.category === 'Lainnya Pemasukan'))
+                // Data sudah diurutkan di useEffect
+                if (filter === 'all') return transactions;
+                return transactions.filter(item => 
+                    item.type === filter
                 );
             }, [filter, transactions]);
 
@@ -573,7 +559,7 @@
             
             
             if (error) {
-                // Tampilkan pesan error yang jelas jika inisialisasi/koneksi gagal
+                // Tampilkan pesan error jika inisialisasi/koneksi gagal
                 return (
                     <div className="flex flex-col items-center justify-center min-h-screen bg-rose-50 p-6 text-rose-800">
                         <svg className="h-12 w-12 text-rose-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -585,7 +571,7 @@
                 );
             }
 
-            if (!firebaseContext.isAuthReady || isLoadingData) {
+            if (!isAuthReady || isLoadingData) {
                 // Tampilkan Loading State jika data belum siap
                 return (
                     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-600">
@@ -597,7 +583,7 @@
             }
 
             // Tampilkan User ID untuk keperluan debugging/pelacakan
-            const currentUserId = firebaseContext.userId;
+            const currentUserId = userId;
             
             return (
                 <div className="max-w-md mx-auto min-h-screen bg-slate-50 pb-10">
@@ -606,7 +592,6 @@
                         transaction={deleteCandidate}
                         onConfirm={deleteTransaction}
                         onClose={() => setDeleteCandidate(null)}
-                        formatRupiah={formatRupiah}
                     />
                     
                     {/* Header */}
@@ -652,7 +637,7 @@
                     <div className="p-4 space-y-6">
                         
                         {/* Form Input Transaksi */}
-                        <InputForm onAddTransaction={addTransaction} formatRupiah={formatRupiah} />
+                        <InputForm onAddTransaction={addTransaction} />
 
                         {/* Grafik Kategori */}
                         <CategoryChart 
@@ -685,13 +670,13 @@
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className={`font-bold text-sm whitespace-nowrap
-                                        ${item.type === 'income' || item.category === 'Topup Saldo' || item.category === 'Lainnya Pemasukan' ? 'text-emerald-600' : 
+                                        ${item.type === 'income' ? 'text-emerald-600' : 
                                             item.type === 'balance' ? 'text-blue-600' : 'text-rose-600'}
                                         `}>
                                         {item.type === 'expense' ? '-' : '+'} {formatRupiah(item.amount)}
                                         </span>
-                                        {/* Tombol Hapus: Hanya muncul untuk transaksi dari Cloud (yang memiliki ID Firestore) */}
-                                        {typeof item.id === 'string' && item.id.length > 5 && !item.id.startsWith('h') && (
+                                        {/* Tombol Hapus: Hanya muncul untuk transaksi dari Cloud (yang tidak punya ID hardcoded 'h') */}
+                                        {typeof item.id === 'string' && !item.id.startsWith('h') && (
                                             <button 
                                                 onClick={() => setDeleteCandidate(item)} 
                                                 className="p-1 rounded-full hover:bg-rose-50 transition-colors flex-shrink-0"
@@ -712,18 +697,6 @@
                 </div>
             );
         };
-        
-        // Memindahkan window.collection, window.addDoc, dll. ke global agar React dapat mengaksesnya
-        // tanpa perlu mengimpor ulang (karena React di sini adalah script babel, bukan module)
-        if (window.db) {
-            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => {
-                window.collection = mod.collection;
-                window.onSnapshot = mod.onSnapshot;
-                window.addDoc = mod.addDoc;
-                window.deleteDoc = mod.deleteDoc;
-                window.doc = mod.doc;
-            });
-        }
         
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<FinancialApp />);
