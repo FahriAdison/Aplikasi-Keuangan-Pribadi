@@ -16,27 +16,86 @@
             min-height: 100vh;
         }
         .glass-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.93);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
         }
         .income-color { color: #10B981; }
         .expense-color { color: #EF4444; }
         .balance-positive { color: #3B82F6; }
         .balance-negative { color: #EF4444; }
-        .chart-bar {
-            transition: all 0.3s ease;
-        }
-        .chart-bar:hover {
-            transform: translateY(-2px);
-        }
-        /* Animasi untuk transisi halaman */
         .page-transition {
             animation: fadeIn 0.5s ease;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            margin-right: 8px;
+        }
+        .custom-checkbox:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #4f46e5;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -48,7 +107,7 @@
         <div class="max-w-md mx-auto mt-8 md:mt-16">
             <!-- Header Aplikasi -->
             <div class="text-center mb-8">
-                <div class="inline-block p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mb-4">
+                <div class="inline-block p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mb-4 shadow-lg">
                     <i class="fas fa-wallet text-white text-4xl"></i>
                 </div>
                 <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Catatan Keuangan Pribadi</h1>
@@ -59,10 +118,10 @@
             <div class="glass-card rounded-2xl shadow-2xl overflow-hidden">
                 <!-- Tab Navigation -->
                 <div class="flex border-b">
-                    <button id="tab-login" class="flex-1 py-4 font-bold text-lg border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">
+                    <button id="tab-login" class="flex-1 py-4 font-bold text-lg border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50 transition-all duration-300">
                         <i class="fas fa-sign-in-alt mr-2"></i>Login
                     </button>
-                    <button id="tab-register" class="flex-1 py-4 font-bold text-lg text-gray-600 hover:text-gray-800 hover:bg-gray-50">
+                    <button id="tab-register" class="flex-1 py-4 font-bold text-lg text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all duration-300">
                         <i class="fas fa-user-plus mr-2"></i>Register
                     </button>
                 </div>
@@ -77,14 +136,33 @@
                             </label>
                             <input type="email" id="login-email" placeholder="anda@email.com" 
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <p id="login-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
                         
                         <div>
                             <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-lock mr-2"></i>Password
                             </label>
-                            <input type="password" id="login-password" placeholder="Minimal 6 karakter" 
-                                   class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <div class="relative">
+                                <input type="password" id="login-password" placeholder="Minimal 6 karakter" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition pr-10" required>
+                                <button type="button" id="toggle-login-password" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p id="login-password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+                        </div>
+
+                        <!-- Remember Me & Forgot Password -->
+                        <div class="flex justify-between items-center">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="remember-me" class="custom-checkbox">
+                                <span class="text-sm text-gray-700 ml-2">Ingat Saya</span>
+                            </label>
+                            
+                            <button type="button" id="forgot-password-btn" class="text-sm text-blue-600 hover:text-blue-800 transition">
+                                <i class="fas fa-key mr-1"></i>Lupa Password?
+                            </button>
                         </div>
 
                         <button type="submit" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg">
@@ -98,24 +176,42 @@
                             <label for="register-name" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-user mr-2"></i>Nama Lengkap
                             </label>
-                            <input type="text" id="register-name" placeholder="Nama Anda" 
-                                   class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                            <input type="text" id="register-name" placeholder="Nama Anda (unik, tidak boleh sama)" 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <p id="register-name-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
                         
                         <div>
                             <label for="register-email" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-envelope mr-2"></i>Email
                             </label>
-                            <input type="email" id="register-email" placeholder="anda@email.com" 
+                            <input type="email" id="register-email" placeholder="anda@email.com (unik)" 
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <p id="register-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
                         
                         <div>
                             <label for="register-password" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-lock mr-2"></i>Password
                             </label>
-                            <input type="password" id="register-password" placeholder="Minimal 6 karakter" 
-                                   class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <div class="relative">
+                                <input type="password" id="register-password" placeholder="Minimal 6 karakter" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition pr-10" required>
+                                <button type="button" id="toggle-register-password" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex items-center mb-1">
+                                    <div id="password-strength-bar" class="h-2 flex-grow bg-gray-200 rounded-full overflow-hidden">
+                                        <div id="password-strength-fill" class="h-full w-0 transition-all duration-300"></div>
+                                    </div>
+                                    <span id="password-strength-text" class="ml-2 text-xs font-medium text-gray-500">Lemah</span>
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    <i class="fas fa-info-circle mr-1"></i>Gunakan kombinasi huruf, angka, dan simbol
+                                </p>
+                            </div>
                         </div>
 
                         <div>
@@ -124,6 +220,7 @@
                             </label>
                             <input type="password" id="register-confirm" placeholder="Ketik ulang password" 
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
+                            <p id="register-confirm-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
 
                         <button type="submit" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg">
@@ -158,6 +255,44 @@
                 <p>Data Anda disimpan aman di Firebase Cloud</p>
                 <p class="mt-1">© 2025 Catatan Keuangan Pribadi</p>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL LUPA PASSWORD ==================== -->
+    <div id="forgot-password-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden">
+        <div class="glass-card rounded-2xl shadow-2xl p-6 md:p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">
+                    <i class="fas fa-key mr-2 text-indigo-600"></i>Reset Password
+                </h2>
+                <button id="close-forgot-modal" class="text-gray-500 hover:text-gray-700 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <p class="text-gray-600 mb-6">Masukkan email Anda. Kami akan mengirimkan link untuk reset password.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="reset-email" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>Email Terdaftar
+                    </label>
+                    <input type="email" id="reset-email" placeholder="email@anda.com" 
+                           class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    <p id="reset-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button id="cancel-reset" class="flex-1 py-3 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition">
+                        Batal
+                    </button>
+                    <button id="send-reset-email" class="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-700 hover:to-purple-700 transition">
+                        <i class="fas fa-paper-plane mr-2"></i>Kirim
+                    </button>
+                </div>
+            </div>
+            
+            <div id="reset-message" class="mt-4 p-3 rounded-lg text-center hidden"></div>
         </div>
     </div>
 
@@ -478,7 +613,11 @@
         signOut,
         onAuthStateChanged,
         signInAnonymously,
-        updateProfile
+        updateProfile,
+        sendPasswordResetEmail,
+        setPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { 
         getFirestore, 
@@ -490,21 +629,22 @@
         deleteDoc,
         setDoc,
         getDoc,
-        orderBy,
+        getDocs,
         where,
+        orderBy,
         serverTimestamp
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // ==================== FIREBASE CONFIGURATION ====================
     const firebaseConfig = {
-    apiKey: "%%FIREBASE_API_KEY%%",
-    authDomain: "%%FIREBASE_AUTH_DOMAIN%%",
-    projectId: "%%FIREBASE_PROJECT_ID%%",
-    storageBucket: "%%FIREBASE_STORAGE_BUCKET%%",
-    messagingSenderId: "%%FIREBASE_MESSAGING_SENDER_ID%%",
-    appId: "%%FIREBASE_APP_ID%%",
-    measurementId: "%%FIREBASE_MEASUREMENT_ID%%"
-};
+        apiKey: "%%FIREBASE_API_KEY%%",
+        authDomain: "%%FIREBASE_AUTH_DOMAIN%%",
+        projectId: "%%FIREBASE_PROJECT_ID%%",
+        storageBucket: "%%FIREBASE_STORAGE_BUCKET%%",
+        messagingSenderId: "%%FIREBASE_MESSAGING_SENDER_ID%%",
+        appId: "%%FIREBASE_APP_ID%%",
+        measurementId: "%%FIREBASE_MEASUREMENT_ID%%"
+    };
     
     // ==================== VARIABEL GLOBAL ====================
     let app, db, auth, userId = null;
@@ -523,6 +663,10 @@
     let currentPage = 1;
     const itemsPerPage = 10;
     
+    // Email validation cache
+    let emailCache = new Set();
+    let usernameCache = new Set();
+    
     // ==================== ELEMEN UI ====================
     // Halaman
     const authPage = document.getElementById('auth-page');
@@ -535,12 +679,30 @@
     const registerForm = document.getElementById('register-form');
     const loginEmail = document.getElementById('login-email');
     const loginPassword = document.getElementById('login-password');
+    const toggleLoginPassword = document.getElementById('toggle-login-password');
     const registerName = document.getElementById('register-name');
     const registerEmail = document.getElementById('register-email');
     const registerPassword = document.getElementById('register-password');
     const registerConfirm = document.getElementById('register-confirm');
+    const toggleRegisterPassword = document.getElementById('toggle-register-password');
     const guestLoginBtn = document.getElementById('guest-login');
     const authMessage = document.getElementById('auth-message');
+    const rememberMeCheckbox = document.getElementById('remember-me');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+    
+    // Password strength elements
+    const passwordStrengthBar = document.getElementById('password-strength-bar');
+    const passwordStrengthFill = document.getElementById('password-strength-fill');
+    const passwordStrengthText = document.getElementById('password-strength-text');
+    
+    // Modal elements
+    const forgotPasswordModal = document.getElementById('forgot-password-modal');
+    const closeForgotModal = document.getElementById('close-forgot-modal');
+    const cancelReset = document.getElementById('cancel-reset');
+    const sendResetEmail = document.getElementById('send-reset-email');
+    const resetEmail = document.getElementById('reset-email');
+    const resetEmailError = document.getElementById('reset-email-error');
+    const resetMessage = document.getElementById('reset-message');
     
     // Elemen Main App
     const logoutBtn = document.getElementById('logout-btn');
@@ -599,6 +761,15 @@
     dateInput.value = formattedDate;
     monthFilterEl.value = currentMonth;
     
+    // Cek localStorage untuk "Remember Me"
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+    
+    if (savedEmail && savedRememberMe) {
+        loginEmail.value = savedEmail;
+        rememberMeCheckbox.checked = true;
+    }
+    
     // ==================== HELPER FUNCTIONS ====================
     const formatRupiah = (number) => {
         const absoluteNumber = Math.abs(number);
@@ -611,7 +782,7 @@
         return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     };
 
-    const showNotification = (message, type = 'info') => {
+    const showNotification = (message, type = 'info', duration = 5000) => {
         // Hapus notifikasi sebelumnya
         const existingNotif = document.querySelector('.notification-toast');
         if (existingNotif) existingNotif.remove();
@@ -640,38 +811,26 @@
         
         document.body.appendChild(notification);
         
-        // Auto remove setelah 5 detik
+        // Auto remove setelah duration
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.style.opacity = '0';
                 notification.style.transform = 'translateX(100%)';
                 setTimeout(() => notification.remove(), 300);
             }
-        }, 5000);
+        }, duration);
+        
+        return notification;
     };
 
-    const handleTransactionTypeChange = (newType) => {
-        transactionTypeInput.value = newType;
-        if (newType === 'pemasukan') {
-            typePemasukanBtn.classList.remove('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
-            typePemasukanBtn.classList.add('bg-gradient-to-r', 'from-green-500', 'to-green-600', 'text-white');
-            typePengeluaranBtn.classList.remove('bg-gradient-to-r', 'from-red-500', 'to-red-600', 'text-white');
-            typePengeluaranBtn.classList.add('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
-        } else {
-            typePengeluaranBtn.classList.remove('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
-            typePengeluaranBtn.classList.add('bg-gradient-to-r', 'from-red-500', 'to-red-600', 'text-white');
-            typePemasukanBtn.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-green-600', 'text-white');
-            typePemasukanBtn.classList.add('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
-        }
-    };
-
-    // ==================== AUTH FUNCTIONS ====================
-    function showAuthMessage(message, type = 'error') {
+    const showAuthMessage = (message, type = 'error') => {
         authMessage.textContent = message;
         authMessage.className = 'mt-4 p-3 rounded-lg text-center';
         
         if (type === 'success') {
             authMessage.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
+        } else if (type === 'warning') {
+            authMessage.classList.add('bg-yellow-100', 'text-yellow-800', 'border', 'border-yellow-200');
         } else {
             authMessage.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
         }
@@ -682,7 +841,315 @@
         setTimeout(() => {
             authMessage.classList.add('hidden');
         }, 5000);
-    }
+    };
+
+    const validateEmail = (email) => {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    };
+
+    const validatePassword = (password) => {
+        // Minimal 6 karakter
+        if (password.length < 6) return { valid: false, message: 'Password minimal 6 karakter' };
+        
+        // Cek kekuatan password
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[^A-Za-z0-9]/.test(password)) strength++;
+        
+        return { 
+            valid: true, 
+            strength: strength,
+            message: strength >= 3 ? 'Kuat' : strength >= 2 ? 'Sedang' : 'Lemah'
+        };
+    };
+
+    const updatePasswordStrength = (password) => {
+        const validation = validatePassword(password);
+        
+        if (!password) {
+            passwordStrengthFill.style.width = '0%';
+            passwordStrengthText.textContent = 'Lemah';
+            passwordStrengthFill.className = 'h-full w-0 transition-all duration-300';
+            return;
+        }
+        
+        if (!validation.valid) {
+            passwordStrengthFill.style.width = '20%';
+            passwordStrengthFill.className = 'h-full w-1/5 bg-red-500 transition-all duration-300';
+            passwordStrengthText.textContent = 'Terlalu pendek';
+            passwordStrengthText.className = 'ml-2 text-xs font-medium text-red-500';
+            return;
+        }
+        
+        let width, color, textColor;
+        switch(validation.strength) {
+            case 1:
+                width = '25%';
+                color = 'bg-red-500';
+                textColor = 'text-red-500';
+                break;
+            case 2:
+                width = '50%';
+                color = 'bg-yellow-500';
+                textColor = 'text-yellow-500';
+                break;
+            case 3:
+                width = '75%';
+                color = 'bg-blue-500';
+                textColor = 'text-blue-500';
+                break;
+            case 4:
+                width = '100%';
+                color = 'bg-green-500';
+                textColor = 'text-green-500';
+                break;
+            default:
+                width = '20%';
+                color = 'bg-red-500';
+                textColor = 'text-red-500';
+        }
+        
+        passwordStrengthFill.style.width = width;
+        passwordStrengthFill.className = `h-full ${color} transition-all duration-300`;
+        passwordStrengthText.textContent = validation.message;
+        passwordStrengthText.className = `ml-2 text-xs font-medium ${textColor}`;
+    };
+
+    const checkEmailExists = async (email) => {
+        // Cek cache dulu
+        if (emailCache.has(email)) return true;
+        
+        try {
+            // Query Firestore untuk cek email
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+            
+            const exists = !querySnapshot.empty;
+            if (exists) emailCache.add(email);
+            
+            return exists;
+        } catch (error) {
+            console.error('Error checking email:', error);
+            return false;
+        }
+    };
+
+    const checkUsernameExists = async (username) => {
+        // Cek cache dulu
+        if (usernameCache.has(username)) return true;
+        
+        try {
+            // Query Firestore untuk cek username
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('displayName', '==', username));
+            const querySnapshot = await getDocs(q);
+            
+            const exists = !querySnapshot.empty;
+            if (exists) usernameCache.add(username);
+            
+            return exists;
+        } catch (error) {
+            console.error('Error checking username:', error);
+            return false;
+        }
+    };
+
+    const showFieldError = (fieldId, message) => {
+        const errorElement = document.getElementById(`${fieldId}-error`);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+            
+            // Tambahkan animasi shake
+            const inputField = document.getElementById(fieldId);
+            inputField.classList.add('shake');
+            setTimeout(() => inputField.classList.remove('shake'), 500);
+        }
+    };
+
+    const hideFieldError = (fieldId) => {
+        const errorElement = document.getElementById(`${fieldId}-error`);
+        if (errorElement) {
+            errorElement.classList.add('hidden');
+        }
+    };
+
+    // ==================== MODAL FUNCTIONS ====================
+    const openForgotPasswordModal = () => {
+        forgotPasswordModal.classList.remove('hidden');
+        resetEmail.value = loginEmail.value || '';
+    };
+
+    const closeForgotPasswordModal = () => {
+        forgotPasswordModal.classList.add('hidden');
+        resetMessage.classList.add('hidden');
+        hideFieldError('reset-email');
+        resetEmail.value = '';
+    };
+
+    const sendPasswordReset = async () => {
+        const email = resetEmail.value.trim();
+        
+        // Validasi email
+        if (!email) {
+            showFieldError('reset-email', 'Email tidak boleh kosong');
+            return;
+        }
+        
+        if (!validateEmail(email)) {
+            showFieldError('reset-email', 'Format email tidak valid');
+            return;
+        }
+        
+        try {
+            // Kirim email reset password
+            await sendPasswordResetEmail(auth, email);
+            
+            // Tampilkan pesan sukses
+            resetMessage.textContent = `Email reset password telah dikirim ke ${email}. Cek inbox Anda!`;
+            resetMessage.className = 'mt-4 p-3 rounded-lg text-center bg-green-100 text-green-800 border border-green-200';
+            resetMessage.classList.remove('hidden');
+            
+            // Auto close modal setelah 3 detik
+            setTimeout(() => {
+                closeForgotPasswordModal();
+                showNotification('Email reset password telah dikirim!', 'success');
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Reset password error:', error);
+            
+            let message = 'Gagal mengirim email reset password';
+            if (error.code === 'auth/user-not-found') {
+                message = 'Email tidak terdaftar';
+            } else if (error.code === 'auth/too-many-requests') {
+                message = 'Terlalu banyak percobaan. Coba lagi nanti';
+            }
+            
+            showFieldError('reset-email', message);
+        }
+    };
+
+    // ==================== EVENT LISTENERS ====================
+    // Tab switching
+    tabLogin.addEventListener('click', () => {
+        tabLogin.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+        tabLogin.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+        tabRegister.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+        tabRegister.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        authMessage.classList.add('hidden');
+    });
+
+    tabRegister.addEventListener('click', () => {
+        tabRegister.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+        tabRegister.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+        tabLogin.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+        tabLogin.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        authMessage.classList.add('hidden');
+    });
+
+    // Toggle password visibility
+    toggleLoginPassword.addEventListener('click', () => {
+        const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+        loginPassword.setAttribute('type', type);
+        toggleLoginPassword.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    });
+
+    toggleRegisterPassword.addEventListener('click', () => {
+        const type = registerPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+        registerPassword.setAttribute('type', type);
+        toggleRegisterPassword.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    });
+
+    // Password strength indicator
+    registerPassword.addEventListener('input', (e) => {
+        updatePasswordStrength(e.target.value);
+    });
+
+    // Real-time email validation
+    registerEmail.addEventListener('blur', async () => {
+        const email = registerEmail.value.trim();
+        
+        if (!email) {
+            hideFieldError('register-email');
+            return;
+        }
+        
+        if (!validateEmail(email)) {
+            showFieldError('register-email', 'Format email tidak valid');
+            return;
+        }
+        
+        hideFieldError('register-email');
+        
+        // Cek apakah email sudah terdaftar
+        const emailExists = await checkEmailExists(email);
+        if (emailExists) {
+            showFieldError('register-email', 'Email sudah terdaftar');
+        }
+    });
+
+    // Real-time username validation
+    registerName.addEventListener('blur', async () => {
+        const username = registerName.value.trim();
+        
+        if (!username) {
+            hideFieldError('register-name');
+            return;
+        }
+        
+        if (username.length < 3) {
+            showFieldError('register-name', 'Nama minimal 3 karakter');
+            return;
+        }
+        
+        hideFieldError('register-name');
+        
+        // Cek apakah username sudah terdaftar
+        const usernameExists = await checkUsernameExists(username);
+        if (usernameExists) {
+            showFieldError('register-name', 'Nama sudah digunakan');
+        }
+    });
+
+    // Confirm password validation
+    registerConfirm.addEventListener('input', () => {
+        const password = registerPassword.value;
+        const confirm = registerConfirm.value;
+        
+        if (!confirm) {
+            hideFieldError('register-confirm');
+            return;
+        }
+        
+        if (password !== confirm) {
+            showFieldError('register-confirm', 'Password tidak cocok');
+        } else {
+            hideFieldError('register-confirm');
+        }
+    });
+
+    // Modal event listeners
+    forgotPasswordBtn.addEventListener('click', openForgotPasswordModal);
+    closeForgotModal.addEventListener('click', closeForgotPasswordModal);
+    cancelReset.addEventListener('click', closeForgotPasswordModal);
+    sendResetEmail.addEventListener('click', sendPasswordReset);
+    
+    // Enter key in reset email field
+    resetEmail.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendPasswordReset();
+        }
+    });
 
     // ==================== FIREBASE INITIALIZATION ====================
     async function initializeFirebase() {
@@ -702,6 +1169,7 @@
         }
     }
 
+    // ==================== AUTH FUNCTIONS ====================
     function setupAuthListener() {
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -739,6 +1207,9 @@
                 loginForm.reset();
                 registerForm.reset();
                 authMessage.classList.add('hidden');
+                
+                // Reset password strength indicator
+                updatePasswordStrength('');
             }
         });
     }
@@ -758,6 +1229,11 @@
                     lastLogin: serverTimestamp(),
                     accountType: 'registered'
                 });
+                
+                // Update cache
+                if (user.email) emailCache.add(user.email);
+                if (user.displayName) usernameCache.add(user.displayName);
+                
             } else {
                 // Update last login
                 await setDoc(userRef, {
@@ -783,55 +1259,66 @@
         }
     }
 
-    // ==================== EVENT LISTENERS ====================
-    // Tab switching
-    tabLogin.addEventListener('click', () => {
-        tabLogin.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-        tabLogin.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
-        tabRegister.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-        tabRegister.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
-        loginForm.classList.remove('hidden');
-        registerForm.classList.add('hidden');
-        authMessage.classList.add('hidden');
-    });
-
-    tabRegister.addEventListener('click', () => {
-        tabRegister.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-        tabRegister.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
-        tabLogin.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-        tabLogin.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
-        registerForm.classList.remove('hidden');
-        loginForm.classList.add('hidden');
-        authMessage.classList.add('hidden');
-    });
-
     // Login form submit
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const email = loginEmail.value.trim();
         const password = loginPassword.value;
+        const rememberMe = rememberMeCheckbox.checked;
         
+        // Validasi input
         if (!email || !password) {
             showAuthMessage('Harap isi email dan password', 'error');
             return;
         }
         
+        if (!validateEmail(email)) {
+            showFieldError('login-email', 'Format email tidak valid');
+            return;
+        }
+        
+        hideFieldError('login-email');
+        hideFieldError('login-password');
+        
         try {
+            // Set persistence based on "Remember Me"
+            const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistence);
+            
+            // Login dengan Firebase Auth
             await signInWithEmailAndPassword(auth, email, password);
+            
+            // Simpan ke localStorage jika "Remember Me" dicentang
+            if (rememberMe) {
+                localStorage.setItem('rememberedEmail', email);
+                localStorage.setItem('rememberMe', 'true');
+            } else {
+                localStorage.removeItem('rememberedEmail');
+                localStorage.removeItem('rememberMe');
+            }
+            
             showAuthMessage('Login berhasil!', 'success');
+            
         } catch (error) {
             console.error('Login error:', error);
+            
             let message = 'Login gagal';
             if (error.code === 'auth/invalid-credential') {
                 message = 'Email atau password salah';
+                showFieldError('login-password', 'Password salah');
             } else if (error.code === 'auth/user-not-found') {
                 message = 'Akun tidak ditemukan';
+                showFieldError('login-email', 'Email tidak terdaftar');
             } else if (error.code === 'auth/wrong-password') {
                 message = 'Password salah';
+                showFieldError('login-password', 'Password salah');
             } else if (error.code === 'auth/too-many-requests') {
                 message = 'Terlalu banyak percobaan. Coba lagi nanti';
+            } else if (error.code === 'auth/network-request-failed') {
+                message = 'Koneksi internet bermasalah';
             }
+            
             showAuthMessage(message, 'error');
         }
     });
@@ -844,25 +1331,68 @@
         const email = registerEmail.value.trim();
         const password = registerPassword.value;
         const confirmPassword = registerConfirm.value;
+        const rememberMe = rememberMeCheckbox.checked;
         
         // Validasi
-        if (!email || !password) {
-            showAuthMessage('Harap isi email dan password', 'error');
+        let hasError = false;
+        
+        // Validasi nama
+        if (!name) {
+            showFieldError('register-name', 'Nama tidak boleh kosong');
+            hasError = true;
+        } else if (name.length < 3) {
+            showFieldError('register-name', 'Nama minimal 3 karakter');
+            hasError = true;
+        }
+        
+        // Validasi email
+        if (!email) {
+            showFieldError('register-email', 'Email tidak boleh kosong');
+            hasError = true;
+        } else if (!validateEmail(email)) {
+            showFieldError('register-email', 'Format email tidak valid');
+            hasError = true;
+        }
+        
+        // Validasi password
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+            showFieldError('register-password', passwordValidation.message);
+            hasError = true;
+        }
+        
+        // Validasi konfirmasi password
+        if (!confirmPassword) {
+            showFieldError('register-confirm', 'Konfirmasi password tidak boleh kosong');
+            hasError = true;
+        } else if (password !== confirmPassword) {
+            showFieldError('register-confirm', 'Password tidak cocok');
+            hasError = true;
+        }
+        
+        if (hasError) {
+            showAuthMessage('Harap perbaiki error di atas', 'error');
             return;
         }
         
-        if (password !== confirmPassword) {
-            showAuthMessage('Password dan konfirmasi password tidak cocok', 'error');
+        // Cek duplikasi email
+        const emailExists = await checkEmailExists(email);
+        if (emailExists) {
+            showFieldError('register-email', 'Email sudah terdaftar');
+            showAuthMessage('Email sudah terdaftar', 'error');
             return;
         }
         
-        if (password.length < 6) {
-            showAuthMessage('Password minimal 6 karakter', 'error');
+        // Cek duplikasi username
+        const usernameExists = await checkUsernameExists(name);
+        if (usernameExists) {
+            showFieldError('register-name', 'Nama sudah digunakan');
+            showAuthMessage('Nama sudah digunakan', 'error');
             return;
         }
         
         try {
-            // Buat user baru
+            // Buat user baru di Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             
             // Update display name
@@ -872,17 +1402,37 @@
                 });
             }
             
+            // Set persistence based on "Remember Me"
+            const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistence);
+            
+            // Simpan ke localStorage jika "Remember Me" dicentang
+            if (rememberMe) {
+                localStorage.setItem('rememberedEmail', email);
+                localStorage.setItem('rememberMe', 'true');
+            }
+            
             showAuthMessage('Akun berhasil dibuat! Mengarahkan...', 'success');
+            
+            // Update cache
+            emailCache.add(email);
+            usernameCache.add(name);
             
         } catch (error) {
             console.error('Register error:', error);
             let message = 'Pendaftaran gagal';
             if (error.code === 'auth/email-already-in-use') {
                 message = 'Email sudah terdaftar';
+                showFieldError('register-email', 'Email sudah terdaftar');
+                emailCache.add(email);
             } else if (error.code === 'auth/invalid-email') {
                 message = 'Format email tidak valid';
+                showFieldError('register-email', 'Format email tidak valid');
             } else if (error.code === 'auth/weak-password') {
                 message = 'Password terlalu lemah';
+                showFieldError('register-password', 'Password terlalu lemah');
+            } else if (error.code === 'auth/network-request-failed') {
+                message = 'Koneksi internet bermasalah';
             }
             showAuthMessage(message, 'error');
         }
@@ -1206,6 +1756,21 @@
     typePemasukanBtn.addEventListener('click', () => handleTransactionTypeChange('pemasukan'));
     typePengeluaranBtn.addEventListener('click', () => handleTransactionTypeChange('pengeluaran'));
     
+    function handleTransactionTypeChange(newType) {
+        transactionTypeInput.value = newType;
+        if (newType === 'pemasukan') {
+            typePemasukanBtn.classList.remove('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
+            typePemasukanBtn.classList.add('bg-gradient-to-r', 'from-green-500', 'to-green-600', 'text-white');
+            typePengeluaranBtn.classList.remove('bg-gradient-to-r', 'from-red-500', 'to-red-600', 'text-white');
+            typePengeluaranBtn.classList.add('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
+        } else {
+            typePengeluaranBtn.classList.remove('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
+            typePengeluaranBtn.classList.add('bg-gradient-to-r', 'from-red-500', 'to-red-600', 'text-white');
+            typePemasukanBtn.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-green-600', 'text-white');
+            typePemasukanBtn.classList.add('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
+        }
+    }
+    
     // Filter events
     monthFilterEl.addEventListener('change', (e) => {
         currentFilter.month = e.target.value || null;
@@ -1337,10 +1902,7 @@
         }
     }
 
-    // ==================== INITIALIZE APP ====================
-    // Atur tipe transaksi awal
-    handleTransactionTypeChange('pemasukan');
-    
+    // ==================== START APPLICATION ====================
     // Inisialisasi Firebase
     initializeFirebase();
 
