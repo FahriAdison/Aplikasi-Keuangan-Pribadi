@@ -1,0 +1,63 @@
+name: Deploy with Secure Firebase Config
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Inject Firebase Secrets into HTML
+        run: |
+          # Buat salinan file HTML
+          cp index.html index_template.html
+          
+          # Ganti placeholder dengan secrets
+          sed -i "s|%%FIREBASE_API_KEY%%|${{ secrets.FIREBASE_API_KEY }}|g" index_template.html
+          sed -i "s|%%FIREBASE_AUTH_DOMAIN%%|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g" index_template.html
+          sed -i "s|%%FIREBASE_PROJECT_ID%%|${{ secrets.FIREBASE_PROJECT_ID }}|g" index_template.html
+          sed -i "s|%%FIREBASE_STORAGE_BUCKET%%|${{ secrets.FIREBASE_STORAGE_BUCKET }}|g" index_template.html
+          sed -i "s|%%FIREBASE_MESSAGING_SENDER_ID%%|${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}|g" index_template.html
+          sed -i "s|%%FIREBASE_APP_ID%%|${{ secrets.FIREBASE_APP_ID }}|g" index_template.html
+          sed -i "s|%%FIREBASE_MEASUREMENT_ID%%|${{ secrets.FIREBASE_MEASUREMENT_ID }}|g" index_template.html
+          
+          # Ganti file asli dengan yang sudah di-inject
+          mv index_template.html index.html
+          
+          # Cek apakah berhasil (debugging)
+          echo "File size setelah inject: $(wc -l index.html)"
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
