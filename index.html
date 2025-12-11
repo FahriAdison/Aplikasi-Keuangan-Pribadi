@@ -97,10 +97,27 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Loading state button */
+        .loading-btn {
+            position: relative;
+            pointer-events: none;
+        }
+        .loading-btn:after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
-
 <div id="app" class="min-h-screen p-4 md:p-8">
     <!-- ==================== HALAMAN LOGIN/REGISTER ==================== -->
     <div id="auth-page" class="page-transition">
@@ -113,7 +130,6 @@
                 <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Catatan Keuangan Pribadi</h1>
                 <p class="text-gray-600 text-lg">Kelola keuangan Anda dengan aman</p>
             </div>
-
             <!-- Kartu Login/Register -->
             <div class="glass-card rounded-2xl shadow-2xl overflow-hidden">
                 <!-- Tab Navigation -->
@@ -125,7 +141,6 @@
                         <i class="fas fa-user-plus mr-2"></i>Register
                     </button>
                 </div>
-
                 <!-- Konten Form -->
                 <div class="p-6 md:p-8">
                     <!-- Form Login -->
@@ -138,7 +153,6 @@
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                             <p id="login-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
-                        
                         <div>
                             <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-lock mr-2"></i>Password
@@ -152,44 +166,38 @@
                             </div>
                             <p id="login-password-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
-
                         <!-- Remember Me & Forgot Password -->
                         <div class="flex justify-between items-center">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="remember-me" class="custom-checkbox">
                                 <span class="text-sm text-gray-700 ml-2">Ingat Saya</span>
                             </label>
-                            
                             <button type="button" id="forgot-password-btn" class="text-sm text-blue-600 hover:text-blue-800 transition">
                                 <i class="fas fa-key mr-1"></i>Lupa Password?
                             </button>
                         </div>
-
                         <button type="submit" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg">
                             <i class="fas fa-sign-in-alt mr-2"></i>Masuk ke Aplikasi
                         </button>
                     </form>
-
                     <!-- Form Register (Awalnya Tersembunyi) -->
                     <form id="register-form" class="space-y-5 hidden">
                         <div>
                             <label for="register-name" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-user mr-2"></i>Nama Lengkap
                             </label>
-                            <input type="text" id="register-name" placeholder="Nama Anda (unik, tidak boleh sama)" 
+                            <input type="text" id="register-name" placeholder="Nama Anda" 
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                             <p id="register-name-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
-                        
                         <div>
                             <label for="register-email" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-envelope mr-2"></i>Email
                             </label>
-                            <input type="email" id="register-email" placeholder="anda@email.com (unik)" 
+                            <input type="email" id="register-email" placeholder="anda@email.com" 
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                             <p id="register-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
-                        
                         <div>
                             <label for="register-password" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-lock mr-2"></i>Password
@@ -213,7 +221,6 @@
                                 </p>
                             </div>
                         </div>
-
                         <div>
                             <label for="register-confirm" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-lock mr-2"></i>Konfirmasi Password
@@ -222,22 +229,18 @@
                                    class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                             <p id="register-confirm-error" class="text-red-500 text-xs mt-1 hidden"></p>
                         </div>
-
-                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg">
+                        <button type="submit" id="register-submit-btn" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg">
                             <i class="fas fa-user-plus mr-2"></i>Buat Akun Baru
                         </button>
                     </form>
-
                     <!-- Pesan Error/Success -->
                     <div id="auth-message" class="mt-4 p-3 rounded-lg text-center hidden"></div>
-
                     <!-- Pembatas -->
                     <div class="my-6 flex items-center">
                         <div class="flex-grow border-t border-gray-300"></div>
                         <span class="px-3 text-gray-500">atau</span>
                         <div class="flex-grow border-t border-gray-300"></div>
                     </div>
-
                     <!-- Tombol Guest Mode -->
                     <div class="text-center">
                         <button id="guest-login" class="w-full py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 font-bold rounded-xl hover:from-gray-300 hover:to-gray-400 transition-all duration-300 shadow-md">
@@ -249,7 +252,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Footer Login -->
             <div class="text-center mt-6 text-gray-500 text-sm">
                 <p>Data Anda disimpan aman di Firebase Cloud</p>
@@ -257,7 +259,6 @@
             </div>
         </div>
     </div>
-
     <!-- ==================== MODAL LUPA PASSWORD ==================== -->
     <div id="forgot-password-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden">
         <div class="glass-card rounded-2xl shadow-2xl p-6 md:p-8 max-w-md w-full mx-4">
@@ -269,9 +270,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <p class="text-gray-600 mb-6">Masukkan email Anda. Kami akan mengirimkan link untuk reset password.</p>
-            
             <div class="space-y-4">
                 <div>
                     <label for="reset-email" class="block text-sm font-medium text-gray-700 mb-2">
@@ -281,7 +280,6 @@
                            class="w-full p-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                     <p id="reset-email-error" class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
-                
                 <div class="flex space-x-3">
                     <button id="cancel-reset" class="flex-1 py-3 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition">
                         Batal
@@ -291,11 +289,9 @@
                     </button>
                 </div>
             </div>
-            
             <div id="reset-message" class="mt-4 p-3 rounded-lg text-center hidden"></div>
         </div>
     </div>
-
     <!-- ==================== HALAMAN UTAMA APLIKASI ==================== -->
     <div id="main-app" class="hidden page-transition">
         <div class="max-w-6xl mx-auto">
@@ -315,7 +311,6 @@
                         </p>
                     </div>
                 </div>
-                
                 <div class="flex flex-col md:items-end">
                     <p id="user-email" class="text-sm text-gray-600 mb-2"></p>
                     <div class="flex space-x-2">
@@ -328,7 +323,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Dashboard Ringkasan -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <!-- Kartu Saldo -->
@@ -344,7 +338,6 @@
                     </div>
                     <p class="text-xs text-gray-400">Update real-time</p>
                 </div>
-
                 <!-- Kartu Pemasukan -->
                 <div class="glass-card p-6 rounded-2xl shadow-lg">
                     <div class="flex items-center mb-4">
@@ -358,7 +351,6 @@
                     </div>
                     <p id="income-count" class="text-xs text-gray-400">0 transaksi</p>
                 </div>
-
                 <!-- Kartu Pengeluaran -->
                 <div class="glass-card p-6 rounded-2xl shadow-lg">
                     <div class="flex items-center mb-4">
@@ -372,7 +364,6 @@
                     </div>
                     <p id="expense-count" class="text-xs text-gray-400">0 transaksi</p>
                 </div>
-
                 <!-- Kartu Statistik -->
                 <div class="glass-card p-6 rounded-2xl shadow-lg">
                     <div class="flex items-center mb-4">
@@ -387,14 +378,12 @@
                     <p id="last-update" class="text-xs text-gray-400">Belum ada data</p>
                 </div>
             </div>
-
             <!-- Filter dan Kontrol -->
             <div class="glass-card p-6 rounded-2xl shadow-lg mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold mb-4 md:mb-0">
                         <i class="fas fa-filter text-indigo-600 mr-2"></i>Filter Transaksi
                     </h2>
-                    
                     <div class="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4 w-full md:w-auto">
                         <!-- Filter Bulanan -->
                         <div class="flex-1">
@@ -403,7 +392,6 @@
                             </label>
                             <input type="month" id="month-filter" class="w-full p-3 rounded-xl border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                         </div>
-                        
                         <!-- Filter Tipe Transaksi -->
                         <div class="flex-1">
                             <label for="type-filter" class="block text-sm font-medium text-gray-700 mb-1">
@@ -415,7 +403,6 @@
                                 <option value="pengeluaran">Pengeluaran</option>
                             </select>
                         </div>
-                        
                         <!-- Filter Kategori -->
                         <div class="flex-1">
                             <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">
@@ -435,7 +422,6 @@
                                 <option value="lainnya">Lainnya</option>
                             </select>
                         </div>
-                        
                         <!-- Tombol Reset Filter -->
                         <div class="flex items-end">
                             <button id="reset-filter" class="w-full md:w-auto px-4 py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 font-medium rounded-xl hover:from-gray-300 hover:to-gray-400 transition shadow-md">
@@ -444,7 +430,6 @@
                         </div>
                     </div>
                 </div>
-                
                 <!-- Statistik Bulanan -->
                 <div id="monthly-stats" class="hidden">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
@@ -467,14 +452,12 @@
                     </div>
                 </div>
             </div>
-
             <!-- Form Transaksi Baru -->
             <div class="glass-card p-6 rounded-2xl shadow-lg mb-8">
                 <h2 class="text-xl font-semibold mb-6 flex items-center">
                     <i class="fas fa-plus-circle text-green-600 mr-2"></i>Tambah Transaksi Baru
                 </h2>
                 <form id="transaction-form" class="space-y-6">
-                    
                     <!-- Tipe Transaksi -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button type="button" id="type-pemasukan" class="flex items-center justify-center p-4 rounded-xl font-bold bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg transition-all duration-300 hover:from-green-600 hover:to-green-700 transform hover:-translate-y-1">
@@ -485,7 +468,6 @@
                         </button>
                         <input type="hidden" id="transaction-type" value="pemasukan">
                     </div>
-
                     <!-- Jumlah dan Kategori -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -494,7 +476,6 @@
                             </label>
                             <input type="number" id="amount" placeholder="Contoh: 50000" class="w-full p-3 rounded-xl border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                         </div>
-                        
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-tag mr-1"></i>Kategori
@@ -513,7 +494,6 @@
                             </select>
                         </div>
                     </div>
-
                     <!-- Keterangan dan Tanggal -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -522,7 +502,6 @@
                             </label>
                             <input type="text" id="description" placeholder="Contoh: Gaji bulanan, Beli kopi" class="w-full p-3 rounded-xl border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                         </div>
-
                         <div>
                             <label for="date" class="block text-sm font-medium text-gray-700 mb-2">
                                 <i class="fas fa-calendar-day mr-1"></i>Tanggal
@@ -530,14 +509,12 @@
                             <input type="date" id="date" class="w-full p-3 rounded-xl border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" required>
                         </div>
                     </div>
-
                     <!-- Tombol Submit -->
                     <button type="submit" class="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-1">
                         <i class="fas fa-save mr-3"></i>Catat Transaksi
                     </button>
                 </form>
             </div>
-
             <!-- Daftar Transaksi -->
             <div class="glass-card p-6 rounded-2xl shadow-lg mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -555,18 +532,15 @@
                         </p>
                     </div>
                 </div>
-                
                 <!-- Loading State -->
                 <div id="loading-transactions" class="text-center py-8">
                     <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
                     <p class="text-gray-500">Memuat data transaksi...</p>
                 </div>
-                
                 <!-- Daftar Transaksi -->
                 <div id="transactions-list" class="space-y-4">
                     <!-- Transaksi akan dimuat di sini -->
                 </div>
-                
                 <!-- Pesan tidak ada data -->
                 <div id="no-data-message" class="text-center py-8 hidden">
                     <div class="inline-block p-4 bg-gray-100 rounded-full mb-4">
@@ -575,7 +549,6 @@
                     <p class="text-gray-500 text-lg font-medium">Belum ada transaksi</p>
                     <p class="text-gray-400 text-sm mt-2">Mulailah dengan menambahkan transaksi pertama Anda!</p>
                 </div>
-                
                 <!-- Pagination -->
                 <div id="pagination" class="mt-6 pt-6 border-t border-gray-200 hidden">
                     <div class="flex justify-between items-center">
@@ -589,7 +562,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Footer -->
             <div class="text-center text-gray-500 text-sm mt-8 pt-8 border-t border-gray-200">
                 <p>© 2025 Catatan Keuangan Pribadi. Data tersimpan aman di Firebase Cloud.</p>
@@ -601,7 +573,6 @@
         </div>
     </div>
 </div>
-
 <!-- Firebase SDK Imports (Module) -->
 <script type="module">
     // Mengimpor modul Firebase yang diperlukan dari CDN
@@ -634,7 +605,6 @@
         orderBy,
         serverTimestamp
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
     // ==================== FIREBASE CONFIGURATION ====================
     const firebaseConfig = {
         apiKey: "%%FIREBASE_API_KEY%%",
@@ -645,33 +615,27 @@
         appId: "%%FIREBASE_APP_ID%%",
         measurementId: "%%FIREBASE_MEASUREMENT_ID%%"
     };
-    
     // ==================== VARIABEL GLOBAL ====================
     let app, db, auth, userId = null;
     let allTransactions = [];
     let filteredTransactions = [];
     let currentUser = null;
-    
     // Filter state
     let currentFilter = {
         month: null,
         type: 'all',
         category: 'all'
     };
-    
     // Pagination state
     let currentPage = 1;
     const itemsPerPage = 10;
-    
     // Email validation cache
     let emailCache = new Set();
     let usernameCache = new Set();
-    
     // ==================== ELEMEN UI ====================
     // Halaman
     const authPage = document.getElementById('auth-page');
     const mainApp = document.getElementById('main-app');
-    
     // Elemen Auth
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
@@ -689,12 +653,11 @@
     const authMessage = document.getElementById('auth-message');
     const rememberMeCheckbox = document.getElementById('remember-me');
     const forgotPasswordBtn = document.getElementById('forgot-password-btn');
-    
+    const registerSubmitBtn = document.getElementById('register-submit-btn');
     // Password strength elements
     const passwordStrengthBar = document.getElementById('password-strength-bar');
     const passwordStrengthFill = document.getElementById('password-strength-fill');
     const passwordStrengthText = document.getElementById('password-strength-text');
-    
     // Modal elements
     const forgotPasswordModal = document.getElementById('forgot-password-modal');
     const closeForgotModal = document.getElementById('close-forgot-modal');
@@ -703,7 +666,6 @@
     const resetEmail = document.getElementById('reset-email');
     const resetEmailError = document.getElementById('reset-email-error');
     const resetMessage = document.getElementById('reset-message');
-    
     // Elemen Main App
     const logoutBtn = document.getElementById('logout-btn');
     const backupBtn = document.getElementById('backup-btn');
@@ -717,7 +679,6 @@
     const expenseCountEl = document.getElementById('expense-count');
     const totalTransactionsEl = document.getElementById('total-transactions');
     const lastUpdateEl = document.getElementById('last-update-time');
-    
     // Elemen Filter
     const monthFilterEl = document.getElementById('month-filter');
     const typeFilterEl = document.getElementById('type-filter');
@@ -732,7 +693,6 @@
     const monthDailyAvgEl = document.getElementById('month-daily-avg');
     const monthLargestEl = document.getElementById('month-largest');
     const monthBalanceEl = document.getElementById('month-balance');
-    
     // Elemen Form Transaksi
     const transactionForm = document.getElementById('transaction-form');
     const typePemasukanBtn = document.getElementById('type-pemasukan');
@@ -742,7 +702,6 @@
     const categoryInput = document.getElementById('category');
     const descriptionInput = document.getElementById('description');
     const dateInput = document.getElementById('date');
-    
     // Elemen Transaksi
     const transactionsListEl = document.getElementById('transactions-list');
     const loadingTransactionsEl = document.getElementById('loading-transactions');
@@ -751,42 +710,34 @@
     const prevPageBtn = document.getElementById('prev-page');
     const nextPageBtn = document.getElementById('next-page');
     const pageInfoEl = document.getElementById('page-info');
-    
     // ==================== INISIALISASI ====================
     // Set tanggal hari ini sebagai default
     const today = new Date();
     const formattedDate = today.toISOString().split('T')[0];
     const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
-    
     dateInput.value = formattedDate;
     monthFilterEl.value = currentMonth;
-    
     // Cek localStorage untuk "Remember Me"
     const savedEmail = localStorage.getItem('rememberedEmail');
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
-    
     if (savedEmail && savedRememberMe) {
         loginEmail.value = savedEmail;
         rememberMeCheckbox.checked = true;
     }
-    
     // ==================== HELPER FUNCTIONS ====================
     const formatRupiah = (number) => {
         const absoluteNumber = Math.abs(number);
         const formatted = absoluteNumber.toLocaleString('id-ID'); 
         return 'Rp ' + formatted;
     };
-
     const getMonthName = (dateString) => {
         const date = new Date(dateString + '-01');
         return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     };
-
     const showNotification = (message, type = 'info', duration = 5000) => {
         // Hapus notifikasi sebelumnya
         const existingNotif = document.querySelector('.notification-toast');
         if (existingNotif) existingNotif.remove();
-        
         // Buat notifikasi baru
         const notification = document.createElement('div');
         notification.className = `notification-toast fixed top-4 right-4 px-6 py-3 rounded-xl shadow-xl z-50 transform transition-all duration-300 ${
@@ -794,7 +745,6 @@
             type === 'error' ? 'bg-gradient-to-r from-red-500 to-pink-600' : 
             'bg-gradient-to-r from-blue-500 to-indigo-600'
         } text-white`;
-        
         notification.innerHTML = `
             <div class="flex items-center">
                 <i class="fas ${
@@ -808,9 +758,7 @@
                 </button>
             </div>
         `;
-        
         document.body.appendChild(notification);
-        
         // Auto remove setelah duration
         setTimeout(() => {
             if (notification.parentNode) {
@@ -819,14 +767,11 @@
                 setTimeout(() => notification.remove(), 300);
             }
         }, duration);
-        
         return notification;
     };
-
     const showAuthMessage = (message, type = 'error') => {
         authMessage.textContent = message;
         authMessage.className = 'mt-4 p-3 rounded-lg text-center';
-        
         if (type === 'success') {
             authMessage.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
         } else if (type === 'warning') {
@@ -834,48 +779,41 @@
         } else {
             authMessage.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
         }
-        
         authMessage.classList.remove('hidden');
-        
         // Auto hide setelah 5 detik
         setTimeout(() => {
             authMessage.classList.add('hidden');
         }, 5000);
     };
-
     const validateEmail = (email) => {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
     };
-
     const validatePassword = (password) => {
         // Minimal 6 karakter
-        if (password.length < 6) return { valid: false, message: 'Password minimal 6 karakter' };
-        
+        if (password.length < 6) {
+            return { valid: false, message: 'Password minimal 6 karakter' };
+        }
         // Cek kekuatan password
         let strength = 0;
         if (password.length >= 8) strength++;
         if (/[A-Z]/.test(password)) strength++;
         if (/[0-9]/.test(password)) strength++;
         if (/[^A-Za-z0-9]/.test(password)) strength++;
-        
         return { 
             valid: true, 
             strength: strength,
             message: strength >= 3 ? 'Kuat' : strength >= 2 ? 'Sedang' : 'Lemah'
         };
     };
-
     const updatePasswordStrength = (password) => {
         const validation = validatePassword(password);
-        
         if (!password) {
             passwordStrengthFill.style.width = '0%';
             passwordStrengthText.textContent = 'Lemah';
             passwordStrengthFill.className = 'h-full w-0 transition-all duration-300';
             return;
         }
-        
         if (!validation.valid) {
             passwordStrengthFill.style.width = '20%';
             passwordStrengthFill.className = 'h-full w-1/5 bg-red-500 transition-all duration-300';
@@ -883,7 +821,6 @@
             passwordStrengthText.className = 'ml-2 text-xs font-medium text-red-500';
             return;
         }
-        
         let width, color, textColor;
         switch(validation.strength) {
             case 1:
@@ -911,129 +848,75 @@
                 color = 'bg-red-500';
                 textColor = 'text-red-500';
         }
-        
         passwordStrengthFill.style.width = width;
         passwordStrengthFill.className = `h-full ${color} transition-all duration-300`;
         passwordStrengthText.textContent = validation.message;
         passwordStrengthText.className = `ml-2 text-xs font-medium ${textColor}`;
     };
-
-    const checkEmailExists = async (email) => {
-        // Cek cache dulu
-        if (emailCache.has(email)) return true;
-        
-        try {
-            // Query Firestore untuk cek email
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('email', '==', email));
-            const querySnapshot = await getDocs(q);
-            
-            const exists = !querySnapshot.empty;
-            if (exists) emailCache.add(email);
-            
-            return exists;
-        } catch (error) {
-            console.error('Error checking email:', error);
-            return false;
-        }
-    };
-
-    const checkUsernameExists = async (username) => {
-        // Cek cache dulu
-        if (usernameCache.has(username)) return true;
-        
-        try {
-            // Query Firestore untuk cek username
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('displayName', '==', username));
-            const querySnapshot = await getDocs(q);
-            
-            const exists = !querySnapshot.empty;
-            if (exists) usernameCache.add(username);
-            
-            return exists;
-        } catch (error) {
-            console.error('Error checking username:', error);
-            return false;
-        }
-    };
-
     const showFieldError = (fieldId, message) => {
         const errorElement = document.getElementById(`${fieldId}-error`);
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.classList.remove('hidden');
-            
             // Tambahkan animasi shake
             const inputField = document.getElementById(fieldId);
-            inputField.classList.add('shake');
-            setTimeout(() => inputField.classList.remove('shake'), 500);
+            if (inputField) {
+                inputField.classList.add('shake');
+                setTimeout(() => inputField.classList.remove('shake'), 500);
+            }
         }
     };
-
     const hideFieldError = (fieldId) => {
         const errorElement = document.getElementById(`${fieldId}-error`);
         if (errorElement) {
             errorElement.classList.add('hidden');
         }
     };
-
     // ==================== MODAL FUNCTIONS ====================
     const openForgotPasswordModal = () => {
         forgotPasswordModal.classList.remove('hidden');
         resetEmail.value = loginEmail.value || '';
     };
-
     const closeForgotPasswordModal = () => {
         forgotPasswordModal.classList.add('hidden');
         resetMessage.classList.add('hidden');
         hideFieldError('reset-email');
         resetEmail.value = '';
     };
-
     const sendPasswordReset = async () => {
         const email = resetEmail.value.trim();
-        
         // Validasi email
         if (!email) {
             showFieldError('reset-email', 'Email tidak boleh kosong');
             return;
         }
-        
         if (!validateEmail(email)) {
             showFieldError('reset-email', 'Format email tidak valid');
             return;
         }
-        
         try {
             // Kirim email reset password
             await sendPasswordResetEmail(auth, email);
-            
             // Tampilkan pesan sukses
             resetMessage.textContent = `Email reset password telah dikirim ke ${email}. Cek inbox Anda!`;
             resetMessage.className = 'mt-4 p-3 rounded-lg text-center bg-green-100 text-green-800 border border-green-200';
             resetMessage.classList.remove('hidden');
-            
             // Auto close modal setelah 3 detik
             setTimeout(() => {
                 closeForgotPasswordModal();
                 showNotification('Email reset password telah dikirim!', 'success');
             }, 3000);
-            
         } catch (error) {
             console.error('Reset password error:', error);
-            
             let message = 'Gagal mengirim email reset password';
             if (error.code === 'auth/user-not-found') {
                 message = 'Email tidak terdaftar';
             } else if (error.code === 'auth/too-many-requests') {
                 message = 'Terlalu banyak percobaan. Coba lagi nanti';
             }
-            
             showFieldError('reset-email', message);
         }
     };
-
     // ==================== EVENT LISTENERS ====================
     // Tab switching
     tabLogin.addEventListener('click', () => {
@@ -1045,7 +928,6 @@
         registerForm.classList.add('hidden');
         authMessage.classList.add('hidden');
     });
-
     tabRegister.addEventListener('click', () => {
         tabRegister.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
         tabRegister.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
@@ -1055,94 +937,42 @@
         loginForm.classList.add('hidden');
         authMessage.classList.add('hidden');
     });
-
     // Toggle password visibility
     toggleLoginPassword.addEventListener('click', () => {
         const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
         loginPassword.setAttribute('type', type);
         toggleLoginPassword.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
     });
-
     toggleRegisterPassword.addEventListener('click', () => {
         const type = registerPassword.getAttribute('type') === 'password' ? 'text' : 'password';
         registerPassword.setAttribute('type', type);
         toggleRegisterPassword.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
     });
-
     // Password strength indicator
     registerPassword.addEventListener('input', (e) => {
         updatePasswordStrength(e.target.value);
     });
-
-    // Real-time email validation
-    registerEmail.addEventListener('blur', async () => {
-        const email = registerEmail.value.trim();
-        
-        if (!email) {
-            hideFieldError('register-email');
-            return;
-        }
-        
-        if (!validateEmail(email)) {
-            showFieldError('register-email', 'Format email tidak valid');
-            return;
-        }
-        
-        hideFieldError('register-email');
-        
-        // Cek apakah email sudah terdaftar
-        const emailExists = await checkEmailExists(email);
-        if (emailExists) {
-            showFieldError('register-email', 'Email sudah terdaftar');
-        }
-    });
-
-    // Real-time username validation
-    registerName.addEventListener('blur', async () => {
-        const username = registerName.value.trim();
-        
-        if (!username) {
-            hideFieldError('register-name');
-            return;
-        }
-        
-        if (username.length < 3) {
-            showFieldError('register-name', 'Nama minimal 3 karakter');
-            return;
-        }
-        
-        hideFieldError('register-name');
-        
-        // Cek apakah username sudah terdaftar
-        const usernameExists = await checkUsernameExists(username);
-        if (usernameExists) {
-            showFieldError('register-name', 'Nama sudah digunakan');
-        }
-    });
-
+    // Real-time username validation - dihapus karena tidak diperlukan sebelum register
+    
     // Confirm password validation
     registerConfirm.addEventListener('input', () => {
         const password = registerPassword.value;
         const confirm = registerConfirm.value;
-        
         if (!confirm) {
             hideFieldError('register-confirm');
             return;
         }
-        
         if (password !== confirm) {
             showFieldError('register-confirm', 'Password tidak cocok');
         } else {
             hideFieldError('register-confirm');
         }
     });
-
     // Modal event listeners
     forgotPasswordBtn.addEventListener('click', openForgotPasswordModal);
     closeForgotModal.addEventListener('click', closeForgotPasswordModal);
     cancelReset.addEventListener('click', closeForgotPasswordModal);
     sendResetEmail.addEventListener('click', sendPasswordReset);
-    
     // Enter key in reset email field
     resetEmail.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -1150,25 +980,20 @@
             sendPasswordReset();
         }
     });
-
     // ==================== FIREBASE INITIALIZATION ====================
     async function initializeFirebase() {
         try {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            
             console.log('Firebase initialized successfully');
-            
             // Setup auth state listener
             setupAuthListener();
-            
         } catch (error) {
             console.error('Firebase initialization error:', error);
             showNotification('Gagal menginisialisasi database', 'error');
         }
     }
-
     // ==================== AUTH FUNCTIONS ====================
     function setupAuthListener() {
         onAuthStateChanged(auth, async (user) => {
@@ -1176,64 +1001,50 @@
                 // User logged in
                 currentUser = user;
                 userId = user.uid;
-                
                 // Update UI dengan info user
                 updateUserUI(user);
-                
                 // Simpan user info ke Firestore jika baru register
                 if (user.email && !user.isAnonymous) {
                     await saveUserInfo(user);
                 }
-                
                 // Switch to main app
                 authPage.classList.add('hidden');
                 mainApp.classList.remove('hidden');
-                
                 // Load transactions
                 listenForTransactions();
-                
-                showNotification(`Selamat datang ${user.email ? user.email : 'Tamu'}!`, 'success');
-                
             } else {
                 // User logged out
                 currentUser = null;
                 userId = null;
-                
                 // Switch to auth page
                 authPage.classList.remove('hidden');
                 mainApp.classList.add('hidden');
-                
                 // Reset form values
                 loginForm.reset();
                 registerForm.reset();
                 authMessage.classList.add('hidden');
-                
                 // Reset password strength indicator
                 updatePasswordStrength('');
             }
         });
     }
-
     async function saveUserInfo(user) {
         try {
             const userRef = doc(db, 'users', user.uid);
             const userDoc = await getDoc(userRef);
-            
             if (!userDoc.exists()) {
                 // Simpan info user baru
                 await setDoc(userRef, {
                     uid: user.uid,
                     email: user.email,
-                    displayName: user.displayName || registerName.value || 'Pengguna',
+                    displayName: user.displayName || 'Pengguna',
                     createdAt: serverTimestamp(),
                     lastLogin: serverTimestamp(),
                     accountType: 'registered'
                 });
-                
                 // Update cache
                 if (user.email) emailCache.add(user.email);
                 if (user.displayName) usernameCache.add(user.displayName);
-                
             } else {
                 // Update last login
                 await setDoc(userRef, {
@@ -1244,7 +1055,6 @@
             console.error('Error saving user info:', error);
         }
     }
-
     function updateUserUI(user) {
         if (user.email) {
             // Registered user
@@ -1258,37 +1068,31 @@
             guestBadge.classList.remove('hidden');
         }
     }
-
     // Login form submit
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const email = loginEmail.value.trim();
         const password = loginPassword.value;
         const rememberMe = rememberMeCheckbox.checked;
-        
         // Validasi input
         if (!email || !password) {
             showAuthMessage('Harap isi email dan password', 'error');
             return;
         }
-        
         if (!validateEmail(email)) {
             showFieldError('login-email', 'Format email tidak valid');
             return;
         }
-        
         hideFieldError('login-email');
         hideFieldError('login-password');
+        authMessage.classList.add('hidden');
         
         try {
             // Set persistence based on "Remember Me"
             const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
             await setPersistence(auth, persistence);
-            
             // Login dengan Firebase Auth
             await signInWithEmailAndPassword(auth, email, password);
-            
             // Simpan ke localStorage jika "Remember Me" dicentang
             if (rememberMe) {
                 localStorage.setItem('rememberedEmail', email);
@@ -1297,12 +1101,8 @@
                 localStorage.removeItem('rememberedEmail');
                 localStorage.removeItem('rememberMe');
             }
-            
-            showAuthMessage('Login berhasil!', 'success');
-            
         } catch (error) {
             console.error('Login error:', error);
-            
             let message = 'Login gagal';
             if (error.code === 'auth/invalid-credential') {
                 message = 'Email atau password salah';
@@ -1318,14 +1118,15 @@
             } else if (error.code === 'auth/network-request-failed') {
                 message = 'Koneksi internet bermasalah';
             }
-            
             showAuthMessage(message, 'error');
         }
     });
-
-    // Register form submit
+    // Register form submit - DIPERBAIKI
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        // Tampilkan loading state
+        registerSubmitBtn.classList.add('loading-btn');
+        registerSubmitBtn.disabled = true;
         
         const name = registerName.value.trim();
         const email = registerEmail.value.trim();
@@ -1333,9 +1134,15 @@
         const confirmPassword = registerConfirm.value;
         const rememberMe = rememberMeCheckbox.checked;
         
+        // Reset error messages sebelumnya
+        hideFieldError('register-name');
+        hideFieldError('register-email');
+        hideFieldError('register-password');
+        hideFieldError('register-confirm');
+        authMessage.classList.add('hidden');
+        
         // Validasi
         let hasError = false;
-        
         // Validasi nama
         if (!name) {
             showFieldError('register-name', 'Nama tidak boleh kosong');
@@ -1344,7 +1151,6 @@
             showFieldError('register-name', 'Nama minimal 3 karakter');
             hasError = true;
         }
-        
         // Validasi email
         if (!email) {
             showFieldError('register-email', 'Email tidak boleh kosong');
@@ -1353,14 +1159,12 @@
             showFieldError('register-email', 'Format email tidak valid');
             hasError = true;
         }
-        
         // Validasi password
         const passwordValidation = validatePassword(password);
         if (!passwordValidation.valid) {
             showFieldError('register-password', passwordValidation.message);
             hasError = true;
         }
-        
         // Validasi konfirmasi password
         if (!confirmPassword) {
             showFieldError('register-confirm', 'Konfirmasi password tidak boleh kosong');
@@ -1371,36 +1175,24 @@
         }
         
         if (hasError) {
-            showAuthMessage('Harap perbaiki error di atas', 'error');
-            return;
-        }
-        
-        // Cek duplikasi email
-        const emailExists = await checkEmailExists(email);
-        if (emailExists) {
-            showFieldError('register-email', 'Email sudah terdaftar');
-            showAuthMessage('Email sudah terdaftar', 'error');
-            return;
-        }
-        
-        // Cek duplikasi username
-        const usernameExists = await checkUsernameExists(name);
-        if (usernameExists) {
-            showFieldError('register-name', 'Nama sudah digunakan');
-            showAuthMessage('Nama sudah digunakan', 'error');
+            registerSubmitBtn.classList.remove('loading-btn');
+            registerSubmitBtn.disabled = false;
             return;
         }
         
         try {
-            // Buat user baru di Firebase Auth
+            // Buat user baru di Firebase Auth - ini adalah langkah utama
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             
-            // Update display name
+            // Update display name di Firebase Auth
             if (name) {
                 await updateProfile(userCredential.user, {
                     displayName: name
                 });
             }
+            
+            // Simpan info user ke Firestore
+            await saveUserInfo(userCredential.user);
             
             // Set persistence based on "Remember Me"
             const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
@@ -1412,6 +1204,7 @@
                 localStorage.setItem('rememberMe', 'true');
             }
             
+            // Tampilkan pesan sukses
             showAuthMessage('Akun berhasil dibuat! Mengarahkan...', 'success');
             
             // Update cache
@@ -1421,6 +1214,8 @@
         } catch (error) {
             console.error('Register error:', error);
             let message = 'Pendaftaran gagal';
+            
+            // Handle Firebase Auth errors spesifik
             if (error.code === 'auth/email-already-in-use') {
                 message = 'Email sudah terdaftar';
                 showFieldError('register-email', 'Email sudah terdaftar');
@@ -1429,15 +1224,24 @@
                 message = 'Format email tidak valid';
                 showFieldError('register-email', 'Format email tidak valid');
             } else if (error.code === 'auth/weak-password') {
-                message = 'Password terlalu lemah';
-                showFieldError('register-password', 'Password terlalu lemah');
+                message = 'Password terlalu lemah (minimal 6 karakter)';
+                showFieldError('register-password', message);
             } else if (error.code === 'auth/network-request-failed') {
-                message = 'Koneksi internet bermasalah';
+                message = 'Koneksi internet bermasalah. Coba lagi nanti.';
+            } else if (error.code === 'auth/operation-not-allowed') {
+                message = 'Pendaftaran dengan email/password tidak diizinkan di Firebase console';
+            } else {
+                // Error umum
+                message = 'Gagal membuat akun. Coba lagi nanti.';
             }
+            
             showAuthMessage(message, 'error');
+        } finally {
+            // Selalu reset tombol submit setelah proses selesai
+            registerSubmitBtn.classList.remove('loading-btn');
+            registerSubmitBtn.disabled = false;
         }
     });
-
     // Guest login
     guestLoginBtn.addEventListener('click', async () => {
         try {
@@ -1447,27 +1251,22 @@
             showAuthMessage('Gagal masuk sebagai tamu', 'error');
         }
     });
-
     // Logout
     logoutBtn.addEventListener('click', async () => {
         try {
             await signOut(auth);
-            showNotification('Berhasil logout', 'success');
         } catch (error) {
             console.error('Logout error:', error);
             showNotification('Gagal logout', 'error');
         }
     });
-
     // Backup data (placeholder)
     backupBtn.addEventListener('click', () => {
         showNotification('Fitur backup akan segera hadir!', 'info');
     });
-
     // ==================== TRANSACTION FUNCTIONS ====================
     function listenForTransactions() {
         if (!db || !userId) return;
-        
         let collectionPath;
         if (currentUser && !currentUser.isAnonymous) {
             // Registered user: users/{userId}/transactions
@@ -1476,20 +1275,16 @@
             // Guest user: guests/{userId}/transactions
             collectionPath = `guests/${userId}/transactions`;
         }
-        
         const transactionsRef = collection(db, collectionPath);
         const q = query(transactionsRef, orderBy('date', 'desc'));
-        
         loadingTransactionsEl.classList.remove('hidden');
         noDataMessageEl.classList.add('hidden');
-        
         onSnapshot(q, (snapshot) => {
             allTransactions = [];
             let totalIncome = 0;
             let totalExpense = 0;
             let incomeCount = 0;
             let expenseCount = 0;
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const transaction = { 
@@ -1500,7 +1295,6 @@
                     amount: Number(data.amount) || 0
                 };
                 allTransactions.push(transaction);
-
                 if (data.type === 'pemasukan') {
                     totalIncome += transaction.amount;
                     incomeCount++;
@@ -1509,23 +1303,17 @@
                     expenseCount++;
                 }
             });
-
             // Update waktu terakhir
             lastUpdateEl.textContent = new Date().toLocaleTimeString('id-ID');
-            
             // Update dashboard
             updateDashboard(totalIncome, totalExpense, incomeCount, expenseCount);
-            
             // Apply filters dan render
             filterTransactions();
-            
             // Hide loading
             loadingTransactionsEl.classList.add('hidden');
-
         }, (error) => {
             console.error("Error listening to transactions:", error);
             loadingTransactionsEl.classList.add('hidden');
-            
             if (error.code === "permission-denied") {
                 showNotification('Akses ditolak. Periksa Firestore Rules', 'error');
             } else {
@@ -1533,19 +1321,15 @@
             }
         });
     }
-
     function updateDashboard(income, expense, incomeCount, expenseCount) {
         const balance = income - expense;
-        
         totalIncomeEl.textContent = formatRupiah(income);
         totalExpenseEl.textContent = formatRupiah(expense);
         currentBalanceEl.textContent = formatRupiah(balance);
-        
         incomeCountEl.textContent = `${incomeCount} transaksi`;
         expenseCountEl.textContent = `${expenseCount} transaksi`;
         totalTransactionsEl.textContent = allTransactions.length;
         totalTransactionCountEl.textContent = allTransactions.length;
-
         // Update warna saldo
         currentBalanceEl.classList.remove('balance-positive', 'balance-negative');
         if (balance >= 0) {
@@ -1554,7 +1338,6 @@
             currentBalanceEl.classList.add('balance-negative');
         }
     }
-
     // ==================== FILTER FUNCTIONS ====================
     function filterTransactions() {
         filteredTransactions = allTransactions.filter(transaction => {
@@ -1565,25 +1348,20 @@
                     return false;
                 }
             }
-            
             // Filter berdasarkan tipe
             if (currentFilter.type !== 'all' && transaction.type !== currentFilter.type) {
                 return false;
             }
-            
             // Filter berdasarkan kategori
             if (currentFilter.category !== 'all' && transaction.category !== currentFilter.category) {
                 return false;
             }
-            
             return true;
         });
-        
         // Update UI
         updateFilterIndicator();
         renderTransactions();
         updatePagination();
-        
         // Update statistik bulanan jika ada filter bulan
         if (currentFilter.month) {
             updateMonthlyStats();
@@ -1592,28 +1370,22 @@
             monthlyStatsEl.classList.add('hidden');
         }
     }
-    
     function updateFilterIndicator() {
         let indicatorText = '';
-        
         if (currentFilter.month) {
             indicatorText = getMonthName(currentFilter.month);
         }
-        
         if (currentFilter.type !== 'all') {
             if (indicatorText) indicatorText += ' • ';
             indicatorText += currentFilter.type === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran';
         }
-        
         if (currentFilter.category !== 'all') {
             if (indicatorText) indicatorText += ' • ';
             indicatorText += currentFilter.category;
         }
-        
         if (indicatorText) {
             filterIndicatorEl.textContent = indicatorText;
             filterIndicatorEl.classList.remove('hidden');
-            
             // Show filtered count
             filteredCountEl.textContent = `${filteredTransactions.length} dari ${allTransactions.length}`;
             filteredCountEl.classList.remove('hidden');
@@ -1621,14 +1393,13 @@
             filterIndicatorEl.classList.add('hidden');
             filteredCountEl.classList.add('hidden');
         }
+        transactionCountEl.textContent = filteredTransactions.length > 0 ? filteredTransactions.length : '0';
     }
-    
     function updateMonthlyStats() {
         const monthTransactions = allTransactions.filter(t => {
             const transactionMonth = t.date ? t.date.substring(0, 7) : '';
             return transactionMonth === currentFilter.month;
         });
-        
         if (monthTransactions.length === 0) {
             monthTransactionCountEl.textContent = '0';
             monthDailyAvgEl.textContent = 'Rp 0';
@@ -1636,30 +1407,23 @@
             monthBalanceEl.textContent = 'Rp 0';
             return;
         }
-        
         const monthIncome = monthTransactions
             .filter(t => t.type === 'pemasukan')
             .reduce((sum, t) => sum + Number(t.amount), 0);
-            
         const monthExpense = monthTransactions
             .filter(t => t.type === 'pengeluaran')
             .reduce((sum, t) => sum + Number(t.amount), 0);
-            
         const monthBalance = monthIncome - monthExpense;
-        
         // Hitung rata-rata harian (diasumsikan 30 hari)
         const dailyAvg = Math.round(monthExpense / 30);
-        
         // Temukan transaksi terbesar
         const largestTransaction = monthTransactions.reduce((max, t) => 
             Number(t.amount) > Number(max.amount) ? t : max, monthTransactions[0]
         );
-        
         monthTransactionCountEl.textContent = monthTransactions.length;
         monthDailyAvgEl.textContent = formatRupiah(dailyAvg);
         monthLargestEl.textContent = formatRupiah(largestTransaction.amount);
         monthBalanceEl.textContent = formatRupiah(monthBalance);
-        
         // Update warna saldo bulanan
         monthBalanceEl.classList.remove('balance-positive', 'balance-negative');
         if (monthBalance >= 0) {
@@ -1668,26 +1432,20 @@
             monthBalanceEl.classList.add('balance-negative');
         }
     }
-
     // ==================== RENDER TRANSACTIONS ====================
     function renderTransactions() {
         transactionsListEl.innerHTML = '';
-        
         if (filteredTransactions.length === 0) {
             noDataMessageEl.classList.remove('hidden');
             transactionCountEl.textContent = '0';
             return;
         }
-        
         noDataMessageEl.classList.add('hidden');
-        
         // Hitung pagination
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
-        
         transactionCountEl.textContent = filteredTransactions.length;
-        
         paginatedTransactions.forEach(t => {
             const isIncome = t.type === 'pemasukan';
             const color = isIncome ? 'border-green-400' : 'border-red-400';
@@ -1695,7 +1453,6 @@
             const icon = isIncome ? 'fa-arrow-down' : 'fa-arrow-up';
             const sign = isIncome ? '+' : '-';
             const amountValue = Number(t.amount) || 0;
-
             const item = document.createElement('div');
             item.className = `p-4 border-l-4 ${color} ${bgColor} rounded-xl shadow-sm flex justify-between items-center transition-all duration-300 hover:shadow-md hover:-translate-y-1`;
             item.innerHTML = `
@@ -1726,36 +1483,29 @@
             `;
             transactionsListEl.appendChild(item);
         });
-
         // Attach delete listeners
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', handleDeleteTransaction);
         });
     }
-    
     function updatePagination() {
         const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-        
         if (totalPages > 1) {
             paginationEl.classList.remove('hidden');
             pageInfoEl.textContent = `Halaman ${currentPage} dari ${totalPages}`;
-            
             // Enable/disable buttons
             prevPageBtn.disabled = currentPage === 1;
             nextPageBtn.disabled = currentPage === totalPages;
-            
             prevPageBtn.classList.toggle('opacity-50', currentPage === 1);
             nextPageBtn.classList.toggle('opacity-50', currentPage === totalPages);
         } else {
             paginationEl.classList.add('hidden');
         }
     }
-
     // ==================== TRANSACTION EVENT HANDLERS ====================
     // Tipe transaksi
     typePemasukanBtn.addEventListener('click', () => handleTransactionTypeChange('pemasukan'));
     typePengeluaranBtn.addEventListener('click', () => handleTransactionTypeChange('pengeluaran'));
-    
     function handleTransactionTypeChange(newType) {
         transactionTypeInput.value = newType;
         if (newType === 'pemasukan') {
@@ -1770,26 +1520,22 @@
             typePemasukanBtn.classList.add('bg-gradient-to-r', 'from-gray-200', 'to-gray-300', 'text-gray-800');
         }
     }
-    
     // Filter events
     monthFilterEl.addEventListener('change', (e) => {
         currentFilter.month = e.target.value || null;
         currentPage = 1;
         filterTransactions();
     });
-    
     typeFilterEl.addEventListener('change', (e) => {
         currentFilter.type = e.target.value;
         currentPage = 1;
         filterTransactions();
     });
-    
     categoryFilterEl.addEventListener('change', (e) => {
         currentFilter.category = e.target.value;
         currentPage = 1;
         filterTransactions();
     });
-    
     resetFilterBtn.addEventListener('click', () => {
         monthFilterEl.value = currentMonth;
         typeFilterEl.value = 'all';
@@ -1800,7 +1546,6 @@
         currentPage = 1;
         filterTransactions();
     });
-    
     // Pagination
     prevPageBtn.addEventListener('click', () => {
         if (currentPage > 1) {
@@ -1809,7 +1554,6 @@
             updatePagination();
         }
     });
-    
     nextPageBtn.addEventListener('click', () => {
         const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
         if (currentPage < totalPages) {
@@ -1818,32 +1562,26 @@
             updatePagination();
         }
     });
-
     // Add transaction
     transactionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         if (!userId) {
             showNotification('Silakan login terlebih dahulu', 'error');
             return;
         }
-
         const amount = amountInput.value;
         const description = descriptionInput.value.trim();
         const date = dateInput.value; 
         const type = transactionTypeInput.value;
         const category = categoryInput.value;
-
         if (!amount || !description || !date) {
             showNotification('Harap lengkapi semua data!', 'error');
             return;
         }
-
         if (amount <= 0) {
             showNotification('Jumlah harus lebih dari 0', 'error');
             return;
         }
-
         try {
             let collectionPath;
             if (currentUser && !currentUser.isAnonymous) {
@@ -1851,7 +1589,6 @@
             } else {
                 collectionPath = `guests/${userId}/transactions`;
             }
-            
             const transactionsRef = collection(db, collectionPath);
             await addDoc(transactionsRef, {
                 amount: Number(amount),
@@ -1862,29 +1599,23 @@
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
-
             // Reset form setelah berhasil
             transactionForm.reset();
             dateInput.value = formattedDate;
             categoryInput.value = 'lainnya';
             handleTransactionTypeChange('pemasukan');
-            
             showNotification('Transaksi berhasil dicatat!', 'success');
-            
         } catch (error) {
             console.error("Gagal menambahkan transaksi:", error);
             showNotification(`Gagal menyimpan transaksi: ${error.message}`, 'error');
         }
     });
-
     // Delete transaction
     async function handleDeleteTransaction(e) {
         const transactionId = e.target.closest('button').dataset.id;
-        
         if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
             return;
         }
-        
         try {
             let collectionPath;
             if (currentUser && !currentUser.isAnonymous) {
@@ -1892,7 +1623,6 @@
             } else {
                 collectionPath = `guests/${userId}/transactions/${transactionId}`;
             }
-            
             const transactionDocRef = doc(db, collectionPath);
             await deleteDoc(transactionDocRef);
             showNotification('Transaksi berhasil dihapus!', 'success');
@@ -1901,11 +1631,10 @@
             showNotification('Gagal menghapus transaksi', 'error');
         }
     }
-
     // ==================== START APPLICATION ====================
     // Inisialisasi Firebase
     initializeFirebase();
-
 </script>
 </body>
 </html>
+
